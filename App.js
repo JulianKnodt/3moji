@@ -137,8 +137,10 @@ const home = () => <View style={styles.container}>
 
 const send_msg = (friends) => <View style={styles.container}>
   {friends.map(friend => (
-    <Text>{friend.name}</Text>
-    <Button title="Send Msg"/>
+    <>
+      <Text>{friend.name}</Text>
+      <Button title="Send Msg"/>
+    </>
   ))}
 </View>
 
