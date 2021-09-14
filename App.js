@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Button } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 
 // what views are available for the app
 const views = {
@@ -10,6 +10,7 @@ const views = {
   Home: "Home",
   SendMsg: "SendMsg",
   RecvMsg: "RecvMsg",
+  DraftMsg: "DraftMsg",
 }
 
 class MainApp extends Component {
@@ -36,7 +37,7 @@ class MainApp extends Component {
       name: "juju",
       email: "jknodt@princeton.edu",
     }
-    this.setState({user: tempUser});
+    this.setState({user: tempUser,friends: [{name:'YX',email:"yx.edu"},{name:'Chen',email:'qc.edu'}]});
     this.goto_view(views.Home)
   }
   async signup() {
@@ -58,6 +59,8 @@ class MainApp extends Component {
     const login = this.login.bind(this);
     const signup = this.signup.bind(this)
     const back = this.back.bind(this);
+    const goto_view = this.goto_view.bind(this);
+    const set_state = this.setState.bind(this);
 
     const v = views[this.state.view];
     if (v == views.Splash)
@@ -76,7 +79,10 @@ class MainApp extends Component {
       },
       this.state.email_error,
     );
-    else if (v == views.Home) return home();
+    else if (v == views.Home) return home(goto_view);
+    else if (v == views.SendMsg) return send_msg(this.state.friends,set_state,goto_view);
+    else if (v == views.RecvMsg) return ack_msg();
+    else if (v == views.DraftMsg) return draft_msg();
     else throw `Unknown view {v}`;
   }
 }
@@ -131,27 +137,52 @@ const sign_in = (back, login, email_error) => (
   </View>
 );
 
-const home = () => <View style={styles.container}>
-  <Text>TODO add navigation between sending and receiving messages</Text>
+const home = (goto_view) => <View style={styles.container}>
+  <View style={styles.button}>
+    <Button
+      title="✉️🥺❓Invite Friends"
+      onPress={() => goto_view(views.SendMsg)}
+    />
+    
+  </View>
+  <View style={styles.button}>
+    <Button 
+      title="📫😆❗See Invites" 
+      onPress={() => goto_view(views.RecvMsg)}
+    />
+  </View>
+  <View style={styles.button}>
+    <Button title="➕😊🥰Add Friends"/>
+  </View>
 </View>;
 
-const send_msg = (friends) => <View style={styles.container}>
+const send_msg = (friends,set_state,goto_view) => <View style={styles.container}>
   {friends.map(friend => (
     <>
-      <Text>{friend.name}</Text>
-      <Button title="Send Msg"/>
+    {/* <View style={styles.friendList}>
+      <Pressable onPress={()=>{}}>  
+        <Text>{friend.name}</Text>
+      </Pressable>
+    </View> */}
+    
+      <Button title={friend.name} 
+        onPress={()=>{
+          set_state({messaging:friend});
+          goto_view(views.DraftMsg);
+      }}/>
+      {/* <Button title="Send Msg"/> */}
     </>
   ))}
 </View>
 
-const draft_msg = send_msg => <View>
+const draft_msg = send_msg => <View style={styles.container}>
   <TextInput
     style={styles.input}
     // TODO automatically bring up emoji picker
     // keyboardType="email-address"
     placeholder="Emojis :)"
     // TODO only accept exactly 3 emojis
-    onChange={validate_emoji}
+    // onChange={validate_emoji}
   />
   <Button title="Send" onPress={send_msg}/>
 </View>;
@@ -160,7 +191,11 @@ const ack_msg = ack => <View>
   <Button title="Thumbs Up" onPress={ack}/>
   <Button title="Hourglass" onPress={ack}/>
   <Button title="Thumbs Down" onPress={ack}/>
-</View>
+</View>;
+
+const add_friend = () => <View style={styles.container}>
+  {/* // TODO add friend logic */}
+</View>;
 
 export default MainApp;
 
@@ -178,4 +213,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
   },
+  button: {
+    width: '50%',
+    padding: 16,
+  },
+  friendList:{
+    width: '100%',
+    borderBottomColor: 'grey',
+    borderBottomEndRadius: 1,
+  }
 });
