@@ -11,6 +11,7 @@ const views = {
   SendMsg: "SendMsg",
   RecvMsg: "RecvMsg",
   DraftMsg: "DraftMsg",
+  AddFriend: "AddFriend"
 }
 
 class MainApp extends Component {
@@ -37,7 +38,12 @@ class MainApp extends Component {
       name: "juju",
       email: "jknodt@princeton.edu",
     }
-    this.setState({user: tempUser,friends: [{name:'YX',email:"yx.edu"},{name:'Chen',email:'qc.edu'}]});
+    this.setState({
+                  user: tempUser,
+                  friends: [{name:'YX',email:"yx.edu"},{name:'Chen',email:'qc.edu'}],
+                  invites: [{from:{name:'YX',email:"yx.edu"},emojis:"🍫🍦🍰"},
+                            {from:{name:'Chen',email:'qc.edu'},emojis:"🍣🍜🍛"}],
+                });
     this.goto_view(views.Home)
   }
   async signup() {
@@ -79,10 +85,11 @@ class MainApp extends Component {
       },
       this.state.email_error,
     );
-    else if (v == views.Home) return home(goto_view);
-    else if (v == views.SendMsg) return send_msg(this.state.friends,set_state,goto_view);
-    else if (v == views.RecvMsg) return ack_msg();
-    else if (v == views.DraftMsg) return draft_msg();
+    else if (v == views.Home) return home(goto_view,back);
+    else if (v == views.SendMsg) return send_msg(this.state.friends,set_state,goto_view,back);
+    else if (v == views.RecvMsg) return ack_msg(this.state.invites,back);
+    else if (v == views.DraftMsg) return draft_msg(back,this.state.messaging);
+    else if (v == views.AddFriend) return add_friend(back);
     else throw `Unknown view {v}`;
   }
 }
@@ -90,8 +97,14 @@ class MainApp extends Component {
 const splash = (sign_in, sign_up) => (
   <View style={styles.container}>
     <Text>📭📩🙌!</Text>
-    <Button title="Sign In" onPress={sign_in}/>
-    <Button title="Sign Up" onPress={sign_up}/>
+    <View style={styles.button}>
+      <Button title="Sign In" onPress={sign_in}/>
+    </View>
+    
+    <View style={styles.button}>
+      <Button title="Sign Up" onPress={sign_up}/>
+    </View>
+    
     <StatusBar style="auto"/>
   </View>
 );
@@ -115,8 +128,14 @@ const sign_up = (back, set_email, set_name, done, email_error) => (
       placeholder="Hi, my name is: 🥸"
       onChangeText={set_name}
     />
-    <Button title="Sign Up" onPress={sign_up}/>
-    <Button title="Back" onPress={back}/>
+    <View style={styles.button}>
+      <Button title="Sign Up" onPress={sign_up}/>
+    </View>
+    
+    <View style={styles.button}>
+      <Button title="Back" color="#f194ff" onPress={back}/>
+    </View>
+    
   </View>
 );
 
@@ -132,31 +151,44 @@ const sign_in = (back, login, email_error) => (
       onSubmitEditting={login}
     />
     {email_error && <Text>{email_error}</Text>}
-    <Button title="Login" onPress={() => { login() }}/>
-    <Button title="Back" onPress={back}/>
+    <View style={styles.button}>
+      <Button title="Login" onPress={() => { login() }}/>
+    </View>
+    
+    <View style={styles.button}>
+      <Button title="Back" color="#f194ff" onPress={back}/>
+    </View>
+    
   </View>
 );
 
-const home = (goto_view) => <View style={styles.container}>
+const home = (goto_view,back) => <View style={styles.container}>
   <View style={styles.button}>
     <Button
-      title="✉️🥺❓Invite Friends"
+      title="✉️🥺❓"
       onPress={() => goto_view(views.SendMsg)}
     />
     
   </View>
   <View style={styles.button}>
     <Button 
-      title="📫😆❗See Invites" 
+      title="📫😆❗" 
       onPress={() => goto_view(views.RecvMsg)}
     />
   </View>
   <View style={styles.button}>
-    <Button title="➕😊🥰Add Friends"/>
+    <Button 
+      title="➕😊🥰"
+      onPress={() => goto_view(views.AddFriend)}
+    />
+  </View>
+  <View style={styles.button}>
+    <Button title="Back" color="#f194ff" onPress={back}/>
   </View>
 </View>;
 
-const send_msg = (friends,set_state,goto_view) => <View style={styles.container}>
+const send_msg = (friends,set_state,goto_view,back) => <View style={styles.container}>
+  {console.log(friends)}
   {friends.map(friend => (
     <>
     {/* <View style={styles.friendList}>
@@ -164,18 +196,23 @@ const send_msg = (friends,set_state,goto_view) => <View style={styles.container}
         <Text>{friend.name}</Text>
       </Pressable>
     </View> */}
-    
-      <Button title={friend.name} 
-        onPress={()=>{
-          set_state({messaging:friend});
-          goto_view(views.DraftMsg);
-      }}/>
-      {/* <Button title="Send Msg"/> */}
+      <View style={styles.button}>
+        <Button
+          title={friend.name} 
+          onPress={()=>{
+            set_state({messaging:friend});
+            goto_view(views.DraftMsg);
+        }}/>
+      </View>
+      
     </>
   ))}
+  <View style={styles.button}>
+    <Button title="Back" color="#f194ff" onPress={back}/>
+  </View>
 </View>
 
-const draft_msg = send_msg => <View style={styles.container}>
+const draft_msg = (back,messaging) => <View style={styles.container}>
   <TextInput
     style={styles.input}
     // TODO automatically bring up emoji picker
@@ -184,17 +221,54 @@ const draft_msg = send_msg => <View style={styles.container}>
     // TODO only accept exactly 3 emojis
     // onChange={validate_emoji}
   />
-  <Button title="Send" onPress={send_msg}/>
+  {/* <EmojiInput
+	onEmojiSelected={(emoji) => {console.log(emoji)}}
+	/> */}
+  <View style={styles.button}>
+    <Button title="Send" onPress={()=>{}}/>
+  </View>
+  <View style={styles.button}>
+    <Button title="Back" color="#f194ff" onPress={back}/>
+  </View>
 </View>;
 
-const ack_msg = ack => <View>
-  <Button title="Thumbs Up" onPress={ack}/>
-  <Button title="Hourglass" onPress={ack}/>
-  <Button title="Thumbs Down" onPress={ack}/>
+const ack_msg = (invites,back) => <View style={styles.container}>
+  {invites.map(invite=>(
+      <View  style={styles.inviteContainer}>
+        <Text style={styles.inviteText}>{invite.from.name}: {invite.emojis}?</Text>
+        <View style={styles.reactContainer}>
+          <View style={styles.inviteButton}>
+            <Button title="👍" onPress={()=>{}}/>
+          </View>
+          <View style={styles.inviteButton}>
+            <Button title="👎" onPress={()=>{}}/>
+          </View>
+          <View style={styles.inviteButton}>
+            <Button title="⌛" onPress={()=>{}}/>
+          </View>
+      </View>
+    </View>
+  ))}
+  <View style={styles.button}>
+    <Button title="Back" color="#f194ff" onPress={back}/>
+  </View>
 </View>;
 
-const add_friend = () => <View style={styles.container}>
-  {/* // TODO add friend logic */}
+const add_friend = (back) => <View style={styles.container}>
+  <Text>Please enter your friend's email address:</Text>
+  <TextInput
+    style={styles.input}
+    keyboardType="email-address"
+    autoCapitalize="none"
+    placeholder="@princeton.edu"
+    onChangeText={()=>{}}
+  />
+  <View style={styles.button}>
+    <Button title="➕🤗💛" onPress={()=>{}}/>
+  </View>
+  <View style={styles.button}>
+    <Button title="Back" color="#f194ff" onPress={back}/>
+  </View>
 </View>;
 
 export default MainApp;
@@ -206,16 +280,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-   input: {
+  input: {
     height: 40,
     width: 180,
     margin: 12,
     borderWidth: 1,
     padding: 10,
   },
+  inviteContainer:{
+    width: "100%",
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 25,
+  },
+  reactContainer:{
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteText:{
+    fontSize: 20,
+  },
+  inviteButton:{
+    width: 50,
+    padding: 10,
+  },
   button: {
     width: '50%',
-    padding: 16,
+    padding: 10,
   },
   friendList:{
     width: '100%',
