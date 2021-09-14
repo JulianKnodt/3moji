@@ -15,9 +15,9 @@ func main() {
 	// TODO handle certain functions from below
 	s := NewServer()
 	// TODO actually serve the sign in handler
-  if err := s.Serve(); err != nil {
-    fmt.Printf("Server exited: %v", err)
-  }
+	if err := s.Serve(); err != nil {
+		fmt.Printf("Server exited: %v", err)
+	}
 }
 
 // TODO have in memory data structures with serialization for persistence
@@ -29,7 +29,10 @@ type Server struct {
 	// mu guards the map of struct who have signed up
 	mu       sync.Mutex
 	SignedUp map[Email]User
-	LoggedIn map[Email]LogInToken
+	LoggedIn map[Email]LoginToken
+
+	// In-memory map of recipient to Messages
+	Messages map[Email][]Message
 }
 
 type Email string
@@ -52,12 +55,14 @@ type User struct {
 	// TODO add other preference fields here
 }
 
-type LogInToken struct {
+type LoginToken struct {
 	ValidUntil time.Time
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
 	Uuid Uuid
-	// awful method of protecting a user, TODO eventually replace this with
+	// awful method of protecting a user, TODO eventually replace this
+
+	UserEmail Email
 }
 
 func NewServer() *Server {
@@ -65,18 +70,20 @@ func NewServer() *Server {
 }
 
 func (srv *Server) Serve() error {
-  mux := http.NewServeMux()
-  mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
+	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
+	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 
-  s := http.Server {
-    Addr:           ":8080",
-    Handler:        mux,
-    ReadTimeout:    10 * time.Second,
-    WriteTimeout:   10 * time.Second,
-    MaxHeaderBytes: 1 << 20,
-  }
-  fmt.Println("Listening on", s.Addr, "...")
-  return s.ListenAndServe()
+	s := http.Server{
+		Addr:           ":8080",
+		Handler:        mux,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	fmt.Println("Listening on", s.Addr, "...")
+	return s.ListenAndServe()
 }
 
 func (s *Server) SignUp(userEmail Email, userName string) error {
@@ -101,21 +108,21 @@ func generateUuid() (Uuid, error) {
 	}
 
 	uuid := binary.BigEndian.Uint64(uuidBytes[:])
-  return Uuid(uuid), nil
+	return Uuid(uuid), nil
 }
 
-func (s *Server) LogIn(userEmail Email) (LogInToken, error) {
+func (s *Server) LogIn(userEmail Email) (LoginToken, error) {
 	if _, exists := s.SignedUp[userEmail]; !exists {
-		return LogInToken{}, fmt.Errorf("User does not exist")
+		return LoginToken{}, fmt.Errorf("User does not exist")
 	}
 
 	// TODO check collisions of the uuid and retry or crash
-  uuid, err := generateUuid()
-  if err != nil {
-		return LogInToken{}, err
-  }
+	uuid, err := generateUuid()
+	if err != nil {
+		return LoginToken{}, err
+	}
 
-	loginToken := LogInToken{
+	loginToken := LoginToken{
 		ValidUntil: time.Now().Add(72 * time.Hour),
 		Uuid:       uuid,
 	}
@@ -124,7 +131,7 @@ func (s *Server) LogIn(userEmail Email) (LogInToken, error) {
 
 func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
+		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
 			return
 		}
@@ -151,6 +158,86 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 		if err = enc.Encode(logInToken); err != nil {
 			panic("TODO")
 		}
+		return
+	}
+}
+
+type EmojiContent [3]rune
+
+type SendMessagePayload struct {
+	LoginToken LoginToken
+	Message    Message
+}
+
+// Message is a struct that represents an emoji message between two people
+type Message struct {
+	Emojis     EmojiContent
+	Source     User
+	Recipients []Email
+}
+
+func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		var smp SendMessagePayload
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&smp); err != nil {
+			fmt.Printf("Error decoding send message %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		user := smp.Message.Source
+		loginToken := smp.LoginToken
+		existingToken, exists := s.LoggedIn[user.Email]
+		if !exists || existingToken != loginToken {
+			w.WriteHeader(401)
+			return
+		}
+		if loginToken.UserEmail != user.Email {
+			// impersonating someone else?
+			w.WriteHeader(401)
+			return
+		}
+
+		// save message for all users
+		// TODO delete old messages as well
+		msg := smp.Message
+		for _, recipEmail := range msg.Recipients {
+			s.Messages[recipEmail] = append(s.Messages[recipEmail], msg)
+		}
+
+		w.WriteHeader(200)
+		return
+	}
+}
+
+func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(404)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		var loginToken LoginToken
+		token := []byte(r.Form.Get("loginToken"))
+		if err := json.Unmarshal(token, &loginToken); err != nil {
+			w.WriteHeader(400)
+			return
+		}
+		// TODO validate token
+		enc := json.NewEncoder(w)
+		enc.Encode(s.Messages[loginToken.UserEmail])
+		s.Messages[loginToken.UserEmail] = nil
 		return
 	}
 }
