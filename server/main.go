@@ -15,7 +15,7 @@ func main() {
 	// TODO handle certain functions from below
 	s := NewServer()
 	// TODO actually serve the sign in handler
-	if err := s.Serve(); err != nil {
+	if err := s.Serve("localhost:8080"); err != nil {
 		fmt.Printf("Server exited: %v", err)
 	}
 }
@@ -66,17 +66,21 @@ type LoginToken struct {
 }
 
 func NewServer() *Server {
-	return &Server{}
+	return &Server{
+    SignedUp: map[Email]User{},
+    LoggedIn: map[Email]LoginToken{},
+    Messages: map[Email][]Message{},
+  }
 }
 
-func (srv *Server) Serve() error {
+func (srv *Server) Serve(addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 
 	s := http.Server{
-		Addr:           ":8080",
+		Addr:           addr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -102,7 +106,7 @@ func (s *Server) SignUp(userEmail Email, userName string) error {
 type Uuid uint64
 
 func generateUuid() (Uuid, error) {
-	uuidBytes := [4]byte{}
+	uuidBytes := [8]byte{}
 	if _, err := rand.Read(uuidBytes[:]); err != nil {
 		return Uuid(0), err
 	}
@@ -125,8 +129,14 @@ func (s *Server) LogIn(userEmail Email) (LoginToken, error) {
 	loginToken := LoginToken{
 		ValidUntil: time.Now().Add(72 * time.Hour),
 		Uuid:       uuid,
+    UserEmail: userEmail,
 	}
 	return loginToken, nil
+}
+
+type SignUpPayload struct {
+	Email string `json:email`
+	Name  string `json:name`
 }
 
 func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
@@ -135,18 +145,19 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(400)
 			return
 		}
-		if err := r.ParseForm(); err != nil {
-			w.WriteHeader(500)
-			return
-		}
-		email, err := NewEmail(r.Form.Get("email"))
-		if err != nil {
-			w.WriteHeader(401)
-			return
-		}
-		// TODO validate name
-		name := r.Form.Get("name")
-		if err = s.SignUp(email, name); err != nil {
+    dec := json.NewDecoder(r.Body)
+    var sup SignUpPayload
+    if err := dec.Decode(&sup); err != nil {
+      w.WriteHeader(401)
+      return
+    }
+    email, err := NewEmail(sup.Email)
+    if err != nil {
+      w.WriteHeader(401)
+      json.NewEncoder(w).Encode(err)
+      return
+    }
+		if err := s.SignUp(email, sup.Name); err != nil {
 			panic("TODO")
 		}
 		logInToken, err := s.LogIn(email)
@@ -229,14 +240,18 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var loginToken LoginToken
-		token := []byte(r.Form.Get("loginToken"))
-		if err := json.Unmarshal(token, &loginToken); err != nil {
-			w.WriteHeader(400)
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&loginToken); err != nil {
+			fmt.Printf("Error decoding recv message %v", err)
+			w.WriteHeader(401)
 			return
 		}
 		// TODO validate token
 		enc := json.NewEncoder(w)
-		enc.Encode(s.Messages[loginToken.UserEmail])
+		if err := enc.Encode(s.Messages[loginToken.UserEmail]); err != nil {
+      w.WriteHeader(401)
+      return
+    }
 		s.Messages[loginToken.UserEmail] = nil
 		return
 	}
