@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	//"io/ioutil"
 	"net/http"
-  "io/ioutil"
 )
 
 // mojiClient is a test client for the mojiServer
 type mojiClient struct {
 	httpc *http.Client
-	dst   string
+	// loginToken will not be zero when the client has logged in
+	loginToken LoginToken
+	dst        string
 }
 
 func NewMojiClient(addr string) *mojiClient {
@@ -25,19 +27,53 @@ func (mc *mojiClient) SignUp(name, email string) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	if err := enc.Encode(SignUpPayload{Email: email, Name: name}); err != nil {
-    return err
-  }
-	resp, err := mc.httpc.Post(
-		mc.dst + "/api/v1/sign_up/",
-		"application/json",
-		&buf,
-	)
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/sign_up/", "application/json", &buf)
 	if err != nil {
 		return err
 	}
 	// TODO check response
-  content, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(resp.Status, string(content))
+	dec := json.NewDecoder(resp.Body)
+	var loginToken LoginToken
+	if err := dec.Decode(&loginToken); err != nil {
+		return err
+	}
+	mc.loginToken = loginToken
 	return nil
 }
 
+func (mc *mojiClient) Login(email string) error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(LoginPayload{Email: email}); err != nil {
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/log_in/", "application/json", &buf)
+	if err != nil {
+		return err
+	}
+	// TODO check response
+	dec := json.NewDecoder(resp.Body)
+	var loginToken LoginToken
+	if err := dec.Decode(&loginToken); err != nil {
+		return err
+	}
+	mc.loginToken = loginToken
+	return nil
+}
+
+func (mc *mojiClient) FriendOp(to Uuid, op FriendAction) error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	payload := FriendPayload{Other: to, LoginToken: mc.loginToken, Action: op}
+	if err := enc.Encode(payload); err != nil {
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/friend/", "application/json", &buf)
+	if err != nil {
+		return err
+	}
+	fmt.Println(resp.Status)
+	return nil
+}
