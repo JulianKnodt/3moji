@@ -150,12 +150,6 @@ func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, erro
 	return loginToken, nil
 }
 
-type SignUpRequest struct {
-	Email          string `json:"email"`
-	Name           string `json:"name"`
-	HashedPassword string `json:"hashedPassword"`
-}
-
 func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -187,11 +181,6 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type LoginRequest struct {
-	Email          string `json:"email"`
-	HashedPassword string `json:"hashedPassword"`
-}
-
 func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -219,19 +208,6 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 		enc.Encode(loginToken)
 		return
 	}
-}
-
-type FriendAction int
-
-const (
-	Rmfriend  FriendAction = iota
-	AddFriend FriendAction = iota
-)
-
-type FriendRequest struct {
-	Other      Uuid         `json:"other"`
-	LoginToken LoginToken   `json:"loginToken"`
-	Action     FriendAction `json:"action"`
 }
 
 func (s *Server) FriendHandler() http.HandlerFunc {
@@ -269,12 +245,6 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 		w.WriteHeader(200)
 		return
 	}
-}
-
-type SendMessageRequest struct {
-	LoginToken LoginToken `json:"loginToken"`
-	// The uuid for the message is generated on the server side
-	Message Message `json:"message"`
 }
 
 func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
@@ -330,18 +300,6 @@ func (s *Server) UserFor(token LoginToken) *User {
 	return &user
 }
 
-// Receives both messages and replies for a given user
-type RecvMsgRequest struct {
-	LoginToken LoginToken `json:"loginToken"`
-}
-
-type RecvMsgResponse struct {
-	// New messages the user has not seen
-	NewMessages []Message `json:"newMessages"`
-	// TODO need to add in who replied here
-	NewReplies []MessageReply `json:"newReplies"`
-}
-
 func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -372,15 +330,6 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 		s.UserToMessages[token.UserEmail] = nil
 		return
 	}
-}
-
-type AckMsgRequest struct {
-	// Msg being replied to
-	MsgID Uuid `json:"msgID"`
-	// Reply is a single emoji reply.
-	Reply rune `json:"reply"`
-	// LoginToken of the user
-	LoginToken LoginToken `json:"loginToken"`
 }
 
 func (s *Server) AckMsgHandler() http.HandlerFunc {
