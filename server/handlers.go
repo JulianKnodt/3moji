@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -28,6 +29,8 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		}
 		amt := req.Amount
 		var resp ListPeopleResponse
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		switch req.Kind {
 		case All:
 			for _, person := range s.Users {
@@ -65,6 +68,54 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		}
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
+		return
+	}
+}
+
+func (s *Server) AckMsgHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			return
+		}
+		var req AckMsgRequest
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Error decoding recv message %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		token := req.LoginToken
+		if err := s.ValidateLoginToken(token); err != nil {
+			w.WriteHeader(401)
+			return
+		}
+		user, exists := s.UserFor(token)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
+		originalMessage, exists := s.Messages[req.MsgID]
+		if !exists {
+			w.WriteHeader(404)
+			return
+		}
+		delete(s.Messages, req.MsgID)
+
+		replyUuid, err := generateUuid()
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
+		// TODO check for collisions?
+		s.Replies[replyUuid] = MessageReply{
+			OriginalContent: originalMessage.Emojis,
+			Reply:           req.Reply,
+			From:            user,
+		}
+
+		w.WriteHeader(200)
 		return
 	}
 }

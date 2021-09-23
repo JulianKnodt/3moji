@@ -2,11 +2,33 @@ package main
 
 import (
 	"crypto/rand"
+	//"crypto/aes"
+	//"crypto/cipher"
 	"encoding/binary"
 	"fmt"
 	"strings"
 	"time"
 )
+
+/*
+// The key is not intended to be secret, obfuscating login tokens so they're not immediately
+// visible over the wire.
+var (
+  block cipher.Block
+)
+
+func init() {
+  // TODO or get key from environment
+  var key = [24]byte{}
+  var err error
+  if _, err = rand.Read(key[:]); err != nil {
+    panic(fmt.Errorf("Failed to read key %v", err))
+  }
+  if block, err = aes.NewCipher(key[:]); err != nil {
+    panic(fmt.Errorf("Failed to create cipher %v", err))
+  }
+}
+*/
 
 type EmojiContent [3]rune
 
@@ -25,34 +47,35 @@ func NewEmail(s string) (Email, error) {
 }
 
 type User struct {
-	Uuid  Uuid
-	Name  string
-	Email Email
+	Uuid  Uuid   `json:"uuid"`
+	Name  string `json:"name"`
+	Email Email  `json:"email"`
 	// TODO add other preference fields here
 }
 
 // Message is a struct that represents an emoji message between two people
 type Message struct {
-	Uuid       Uuid
-	Emojis     EmojiContent
-	Source     User
-	Recipients []Email
+	Uuid       Uuid         `json:"uuid"`
+	Emojis     EmojiContent `json:"emojis"`
+	Source     User         `json:"source"`
+	Recipients []Uuid       `json:"recipients"`
+	SentAt     time.Time    `json:"sentAt"`
 }
 
 type MessageReply struct {
 	OriginalContent EmojiContent `json:"originalContent"`
 	Reply           rune         `json:"reply"`
-	From            Email        `json:"from"`
+	From            User         `json:"from"`
 }
 
 type LoginToken struct {
-	ValidUntil time.Time
+	ValidUntil time.Time `json:"validUntil"`
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
-	Uuid Uuid
+	Uuid Uuid `json:"uuid"`
 	// awful method of protecting a user, TODO eventually replace this
 
-	UserEmail Email
+	UserEmail Email `json:"userEmail"`
 }
 
 // Uuid represents a unique identifier, temporary for now but maybe upgrade to [2]uint64

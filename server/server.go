@@ -16,51 +16,50 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	// TODO handle certain functions from below
 	s := NewServer()
-	// TODO actually serve the sign in handler
 	if err := s.Serve(":" + port); err != nil {
 		fmt.Printf("Server exited: %v", err)
 	}
 }
 
-// TODO have in memory data structures with serialization for persistence
-
-// Server is a persistent stateful server which represents the current state of the app
+// Server is a stateful server which represents the current state of the
 // universe. For now it should just be a massive struct which contains everything for
 // simplicity.
 type Server struct {
 	// mu guards the map of struct who have signed up
-	mu       sync.Mutex
-	SignedUp map[Email]User
-	LoggedIn map[Email]LoginToken
+	mu              sync.Mutex
+	SignedUp        map[Email]User
+	LoggedIn        map[Email]LoginToken
+	HashedPasswords map[Uuid]string
 
 	// In-memory map of recipient to Messages
-	UserToMessages map[Email][]Uuid
+	UserToMessages map[Uuid][]Uuid
 	// TODO add a timer so that these will eventually expire or be cleaned up periodically.
 	Messages map[Uuid]Message
 
 	Users map[Uuid]User
 	// List of friends for a given user
-	Friends map[Uuid]map[Uuid]struct{}
+	Friends       map[Uuid]map[Uuid]struct{}
+	MutualFriends map[Uuid]map[Uuid]struct{}
 
 	// Replies waiting for a given user
-	UserToReplies map[Email][]Uuid
+	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]MessageReply
 }
 
 func NewServer() *Server {
 	return &Server{
-		SignedUp: map[Email]User{},
-		LoggedIn: map[Email]LoginToken{},
+		SignedUp:        map[Email]User{},
+		LoggedIn:        map[Email]LoginToken{},
+		HashedPasswords: map[Uuid]string{},
 
-		UserToMessages: map[Email][]Uuid{},
+		UserToMessages: map[Uuid][]Uuid{},
 		Messages:       map[Uuid]Message{},
 
 		Users:   map[Uuid]User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
 
-		UserToReplies: map[Email][]Uuid{},
+		UserToReplies: map[Uuid][]Uuid{},
 		Replies:       map[Uuid]MessageReply{},
 	}
 }
@@ -86,21 +85,7 @@ func (srv *Server) Serve(addr string) error {
 		MaxHeaderBytes: 1 << 20,
 	}
 	fmt.Println("Listening on", s.Addr, "...")
-	//ticker := time.NewTicker(30 * time.Minute)
-	/*
-	  go func() {
-	    for {
-	      <-ticker.C
-	      s.Cleanup()
-	    }
-	  }
-	*/
 	return s.ListenAndServe()
-}
-
-type TimedObject struct {
-	uuid      Uuid
-	ExpiresAt time.Time
 }
 
 // Cleanup will remove any old messages or replies which have not been acknowledged.
@@ -129,19 +114,36 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 		return fmt.Errorf("User already exists")
 	}
 
+	uuid, err := generateUuid()
+	if err != nil {
+		return err
+	}
 	s.SignedUp[userEmail] = User{
 		Name:  userName,
 		Email: userEmail,
+		Uuid:  uuid,
 	}
+	s.HashedPasswords[uuid] = hashedPassword
 
 	return nil
 }
 
 func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, error) {
+	if hashedPassword == "" {
+		return LoginToken{}, fmt.Errorf("password must not be empty")
+	}
+
 	s.mu.Lock()
-	if _, exists := s.SignedUp[userEmail]; !exists {
+	user, exists := s.SignedUp[userEmail]
+	if !exists || user.Email != userEmail {
 		s.mu.Unlock()
-		return LoginToken{}, fmt.Errorf("User does not exist")
+		// Show generic error message, but user does not exist
+		return LoginToken{}, fmt.Errorf("Something wrong with login")
+	}
+	if existing := s.HashedPasswords[user.Uuid]; existing != hashedPassword {
+		s.mu.Unlock()
+		// Show generic error message, but password isn't right
+		return LoginToken{}, fmt.Errorf("Something wrong with login")
 	}
 	s.mu.Unlock()
 
@@ -177,14 +179,18 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(err)
 			return
 		}
+		enc := json.NewEncoder(w)
 		if err := s.SignUp(email, sup.Name, sup.HashedPassword); err != nil {
-			panic("TODO")
+			w.WriteHeader(401)
+			enc.Encode(err)
+			return
 		}
 		loginToken, err := s.Login(email, sup.HashedPassword)
 		if err != nil {
-			panic("TODO")
+			w.WriteHeader(401)
+			enc.Encode(err)
+			return
 		}
-		enc := json.NewEncoder(w)
 		enc.Encode(loginToken)
 		return
 	}
@@ -208,19 +214,19 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(err)
 			return
 		}
+		enc := json.NewEncoder(w)
 		loginToken, err := s.Login(email, lp.HashedPassword)
 		if err != nil {
 			w.WriteHeader(401)
+			enc.Encode(err)
 			return
 		}
-		enc := json.NewEncoder(w)
 		enc.Encode(loginToken)
 		return
 	}
 }
 
 func (s *Server) FriendHandler() http.HandlerFunc {
-	// TODO fill this in
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(404)
@@ -243,6 +249,9 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			return
 		}
 
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
 		switch fp.Action {
 		case Rmfriend:
 			delete(s.Friends[user.Uuid], fp.Other)
@@ -260,7 +269,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 	}
 }
 
-func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
+func (s *Server) SendMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
@@ -286,8 +295,8 @@ func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			return
 		}
-		for _, recipEmail := range msg.Recipients {
-			s.UserToMessages[recipEmail] = append(s.UserToMessages[recipEmail], msg.Uuid)
+		for _, recipUuid := range msg.Recipients {
+			s.UserToMessages[recipUuid] = append(s.UserToMessages[recipUuid], msg.Uuid)
 		}
 		s.Messages[msg.Uuid] = msg
 
@@ -303,7 +312,6 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 	if !exists || existingToken != token {
 		return fmt.Errorf("invalid token")
 	}
-
 	return nil
 }
 
@@ -314,7 +322,7 @@ func (s *Server) UserFor(token LoginToken) (User, bool) {
 	return user, exists
 }
 
-func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
+func (s *Server) RecvMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(404)
@@ -328,12 +336,23 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		token := recvMsg.LoginToken
-		var out RecvMsgResponse
+		if s.ValidateLoginToken(token) != nil {
+			w.WriteHeader(401)
+			return
+		}
+		user, exists := s.UserFor(token)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
 
-		for _, uuid := range s.UserToMessages[token.UserEmail] {
+		var out RecvMsgResponse
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for _, uuid := range s.UserToMessages[user.Uuid] {
 			out.NewMessages = append(out.NewMessages, s.Messages[uuid])
 		}
-		for _, uuid := range s.UserToReplies[token.UserEmail] {
+		for _, uuid := range s.UserToReplies[user.Uuid] {
 			out.NewReplies = append(out.NewReplies, s.Replies[uuid])
 		}
 		enc := json.NewEncoder(w)
@@ -341,52 +360,9 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			return
 		}
-		s.UserToMessages[token.UserEmail] = nil
-		return
-	}
-}
-
-func (s *Server) AckMsgHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(400)
-			return
-		}
-		var ack AckMsgRequest
-		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&ack); err != nil {
-			fmt.Printf("Error decoding recv message %v", err)
-			w.WriteHeader(401)
-			return
-		}
-		/*
-			if err := s.ValidateLoginToken(&ack.LoginToken); err != nil {
-				w.WriteHeader(401)
-				return
-			}
-		*/
-		originalMessage, exists := s.Messages[ack.MsgID]
-		if !exists {
-			w.WriteHeader(404)
-			return
-		}
-		delete(s.Messages, ack.MsgID)
-
-		replyUuid, err := generateUuid()
-		if err != nil {
-			w.WriteHeader(500)
-			return
-		}
-		email := originalMessage.Source.Email
-		s.UserToReplies[email] = append(s.UserToReplies[email], replyUuid)
-		// TODO check for collisions?
-		s.Replies[replyUuid] = MessageReply{
-			OriginalContent: originalMessage.Emojis,
-			Reply:           ack.Reply,
-			From:            email,
-		}
-
-		w.WriteHeader(200)
+		// if success then empty out the messages
+		s.UserToMessages[user.Uuid] = nil
+		s.UserToReplies[user.Uuid] = nil
 		return
 	}
 }
