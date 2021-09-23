@@ -51,10 +51,14 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		SignedUp:       map[Email]User{},
-		LoggedIn:       map[Email]LoginToken{},
+		SignedUp: map[Email]User{},
+		LoggedIn: map[Email]LoginToken{},
+
 		UserToMessages: map[Email][]Uuid{},
 		Messages:       map[Uuid]Message{},
+
+		Users:   map[Uuid]User{},
+		Friends: map[Uuid]map[Uuid]struct{}{},
 
 		UserToReplies: map[Email][]Uuid{},
 		Replies:       map[Uuid]MessageReply{},
@@ -119,6 +123,8 @@ func (s *Server) Cleanup() {
 */
 
 func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, exists := s.SignedUp[userEmail]; exists {
 		return fmt.Errorf("User already exists")
 	}
@@ -132,9 +138,12 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 }
 
 func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, error) {
+	s.mu.Lock()
 	if _, exists := s.SignedUp[userEmail]; !exists {
+		s.mu.Unlock()
 		return LoginToken{}, fmt.Errorf("User does not exist")
 	}
+	s.mu.Unlock()
 
 	// TODO check collisions of the uuid and retry or crash
 	uuid, err := generateUuid()
@@ -228,7 +237,11 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			w.WriteHeader(401)
 			return
 		}
-		user := s.UserFor(fp.LoginToken)
+		user, exists := s.UserFor(fp.LoginToken)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
 
 		switch fp.Action {
 		case Rmfriend:
@@ -284,6 +297,8 @@ func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ValidateLoginToken(token LoginToken) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	existingToken, exists := s.LoggedIn[token.UserEmail]
 	if !exists || existingToken != token {
 		return fmt.Errorf("invalid token")
@@ -292,12 +307,11 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 	return nil
 }
 
-func (s *Server) UserFor(token LoginToken) *User {
+func (s *Server) UserFor(token LoginToken) (User, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	user, exists := s.Users[token.Uuid]
-	if !exists {
-		return nil
-	}
-	return &user
+	return user, exists
 }
 
 func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {

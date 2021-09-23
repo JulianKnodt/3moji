@@ -21,7 +21,11 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			w.WriteHeader(401)
 			return
 		}
-		user := s.UserFor(req.LoginToken)
+		user, exists := s.UserFor(req.LoginToken)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
 		amt := req.Amount
 		var resp ListPeopleResponse
 		switch req.Kind {
