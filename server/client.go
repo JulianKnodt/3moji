@@ -40,6 +40,7 @@ func (mc *mojiClient) SignUp(name, email string) error {
 		return err
 	}
 	mc.loginToken = loginToken
+	fmt.Println(resp.Status)
 	return nil
 }
 
@@ -60,6 +61,7 @@ func (mc *mojiClient) Login(email string) error {
 		return err
 	}
 	mc.loginToken = loginToken
+	fmt.Println(resp.Status)
 	return nil
 }
 

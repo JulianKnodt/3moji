@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -13,10 +14,14 @@ import (
 )
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	// TODO handle certain functions from below
 	s := NewServer()
 	// TODO actually serve the sign in handler
-	if err := s.Serve("localhost:8080"); err != nil {
+	if err := s.Serve(":" + port); err != nil {
 		fmt.Printf("Server exited: %v", err)
 	}
 }
