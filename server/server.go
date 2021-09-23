@@ -322,20 +322,26 @@ func (s *Server) UserFor(token LoginToken) (User, bool) {
 	return user, exists
 }
 
+// s.mu should be held when called.
+func (s *Server) MessageForReplyLocked(reply MessageReply) (Message, bool) {
+	msg, exists := s.Messages[reply.Message]
+	return msg, exists
+}
+
 func (s *Server) RecvMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(404)
 			return
 		}
-		var recvMsg RecvMsgRequest
+		var req RecvMsgRequest
 		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&recvMsg); err != nil {
+		if err := dec.Decode(&req); err != nil {
 			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
 			return
 		}
-		token := recvMsg.LoginToken
+		token := req.LoginToken
 		if s.ValidateLoginToken(token) != nil {
 			w.WriteHeader(401)
 			return
@@ -348,12 +354,31 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 
 		var out RecvMsgResponse
 		s.mu.Lock()
+		now := time.Now()
 		defer s.mu.Unlock()
 		for _, uuid := range s.UserToMessages[user.Uuid] {
-			out.NewMessages = append(out.NewMessages, s.Messages[uuid])
+			msg, exists := s.Messages[uuid]
+			if !exists {
+				continue
+			} else if msg.Expired(now) {
+				delete(s.Messages, uuid)
+				continue
+			}
+			out.NewMessages = append(out.NewMessages, msg)
 		}
 		for _, uuid := range s.UserToReplies[user.Uuid] {
-			out.NewReplies = append(out.NewReplies, s.Replies[uuid])
+			reply, replyExists := s.Replies[uuid]
+			if !replyExists {
+				continue
+			}
+			msg, exists := s.MessageForReplyLocked(reply)
+			if !exists {
+				continue
+			} else if msg.Expired(now) {
+				delete(s.Messages, uuid)
+				continue
+			}
+			out.NewReplies = append(out.NewReplies, reply)
 		}
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(&out); err != nil {
@@ -361,8 +386,10 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 			return
 		}
 		// if success then empty out the messages
-		s.UserToMessages[user.Uuid] = nil
-		s.UserToReplies[user.Uuid] = nil
+		if req.DeleteOld {
+			s.UserToMessages[user.Uuid] = nil
+			s.UserToReplies[user.Uuid] = nil
+		}
 		return
 	}
 }

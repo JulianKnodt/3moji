@@ -30,6 +30,7 @@ type AckMsgRequest struct {
 // Receives both messages and replies for a given user
 type RecvMsgRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
+	DeleteOld  bool       `json:"deleteOld"`
 }
 
 type RecvMsgResponse struct {

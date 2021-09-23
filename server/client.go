@@ -26,7 +26,8 @@ func NewMojiClient(addr string) *mojiClient {
 func (mc *mojiClient) SignUp(name, email string) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(SignUpRequest{Email: email, Name: name}); err != nil {
+	req := SignUpRequest{Email: email, Name: name, HashedPassword: "test"}
+	if err := enc.Encode(req); err != nil {
 		return err
 	}
 	resp, err := mc.httpc.Post(mc.dst+"/api/v1/sign_up/", "application/json", &buf)
@@ -47,7 +48,8 @@ func (mc *mojiClient) SignUp(name, email string) error {
 func (mc *mojiClient) Login(email string) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(LoginRequest{Email: email}); err != nil {
+	req := LoginRequest{Email: email, HashedPassword: "test"}
+	if err := enc.Encode(req); err != nil {
 		return err
 	}
 	resp, err := mc.httpc.Post(mc.dst+"/api/v1/log_in/", "application/json", &buf)

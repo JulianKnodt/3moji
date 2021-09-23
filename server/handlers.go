@@ -110,6 +110,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
 		// TODO check for collisions?
 		s.Replies[replyUuid] = MessageReply{
+			Message:         req.MsgID,
 			OriginalContent: originalMessage.Emojis,
 			Reply:           req.Reply,
 			From:            user,

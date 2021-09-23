@@ -62,10 +62,17 @@ type Message struct {
 	SentAt     time.Time    `json:"sentAt"`
 }
 
+func (m *Message) Expired(now time.Time) bool {
+	return m.SentAt.Add(time.Hour).Before(now)
+}
+
 type MessageReply struct {
+	Message Uuid `json:"message"`
+
 	OriginalContent EmojiContent `json:"originalContent"`
 	Reply           rune         `json:"reply"`
 	From            User         `json:"from"`
+	SentAt          time.Time    `json:"sentAt"`
 }
 
 type LoginToken struct {
