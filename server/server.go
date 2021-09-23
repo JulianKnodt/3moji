@@ -200,7 +200,7 @@ func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, erro
 	return loginToken, nil
 }
 
-type SignUpPayload struct {
+type SignUpRequest struct {
 	Email          string `json:"email"`
 	Name           string `json:"name"`
 	HashedPassword string `json:"hashedPassword"`
@@ -213,7 +213,7 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
-		var sup SignUpPayload
+		var sup SignUpRequest
 		if err := dec.Decode(&sup); err != nil {
 			w.WriteHeader(401)
 			return
@@ -239,7 +239,7 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type LoginPayload struct {
+type LoginRequest struct {
 	Email          string `json:"email"`
 	HashedPassword string `json:"hashedPassword"`
 }
@@ -251,7 +251,7 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
-		var lp LoginPayload
+		var lp LoginRequest
 		if err := dec.Decode(&lp); err != nil {
 			w.WriteHeader(401)
 			return
@@ -281,7 +281,7 @@ const (
 	AddFriend FriendAction = iota
 )
 
-type FriendPayload struct {
+type FriendRequest struct {
 	Other      Uuid         `json:"other"`
 	LoginToken LoginToken   `json:"loginToken"`
 	Action     FriendAction `json:"action"`
@@ -294,7 +294,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			w.WriteHeader(404)
 			return
 		}
-		var fp FriendPayload
+		var fp FriendRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&fp); err != nil {
 			fmt.Printf("Error decoding send message %v", err)
@@ -328,7 +328,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 
 type EmojiContent [3]rune
 
-type SendMessagePayload struct {
+type SendMessageRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
 	// The uuid for the message is generated on the server side
 	Message Message `json:"message"`
@@ -340,7 +340,7 @@ func (s *Server) SendMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(400)
 			return
 		}
-		var smp SendMessagePayload
+		var smp SendMessageRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&smp); err != nil {
 			fmt.Printf("Error decoding send message %v", err)
@@ -388,7 +388,7 @@ func (s *Server) UserFor(token LoginToken) *User {
 }
 
 // Receives both messages and replies for a given user
-type RecvMsgPayload struct {
+type RecvMsgRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
 }
 
@@ -405,7 +405,7 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(404)
 			return
 		}
-		var recvMsg RecvMsgPayload
+		var recvMsg RecvMsgRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&recvMsg); err != nil {
 			fmt.Printf("Error decoding recv message %v", err)
@@ -431,7 +431,7 @@ func (s *Server) RecvMsgHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type AckMsgPayload struct {
+type AckMsgRequest struct {
 	// Msg being replied to
 	MsgID Uuid `json:"msgID"`
 	// Reply is a single emoji reply.
@@ -446,7 +446,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			w.WriteHeader(400)
 			return
 		}
-		var ack AckMsgPayload
+		var ack AckMsgRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&ack); err != nil {
 			fmt.Printf("Error decoding recv message %v", err)

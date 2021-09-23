@@ -26,7 +26,7 @@ func NewMojiClient(addr string) *mojiClient {
 func (mc *mojiClient) SignUp(name, email string) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(SignUpPayload{Email: email, Name: name}); err != nil {
+	if err := enc.Encode(SignUpRequest{Email: email, Name: name}); err != nil {
 		return err
 	}
 	resp, err := mc.httpc.Post(mc.dst+"/api/v1/sign_up/", "application/json", &buf)
@@ -46,7 +46,7 @@ func (mc *mojiClient) SignUp(name, email string) error {
 func (mc *mojiClient) Login(email string) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(LoginPayload{Email: email}); err != nil {
+	if err := enc.Encode(LoginRequest{Email: email}); err != nil {
 		return err
 	}
 	resp, err := mc.httpc.Post(mc.dst+"/api/v1/log_in/", "application/json", &buf)
@@ -66,7 +66,7 @@ func (mc *mojiClient) Login(email string) error {
 func (mc *mojiClient) FriendOp(to Uuid, op FriendAction) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	payload := FriendPayload{Other: to, LoginToken: mc.loginToken, Action: op}
+	payload := FriendRequest{Other: to, LoginToken: mc.loginToken, Action: op}
 	if err := enc.Encode(payload); err != nil {
 		return err
 	}
