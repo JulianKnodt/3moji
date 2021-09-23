@@ -6,7 +6,7 @@ import (
 	//"crypto/cipher"
 	"encoding/binary"
 	"fmt"
-	"strings"
+	"net/mail"
 	"time"
 )
 
@@ -38,9 +38,9 @@ func NewEmail(s string) (Email, error) {
 	if s == "" {
 		return Email(""), fmt.Errorf("Cannot make empty string an email")
 	}
-	// XXX temp
-	if !strings.HasSuffix(s, "princeton.edu") {
-		return Email(""), fmt.Errorf("Currently only accepting princeton emails")
+	_, err := mail.ParseAddress(s)
+	if err != nil {
+		return Email(""), err
 	}
 
 	return Email(s), nil
