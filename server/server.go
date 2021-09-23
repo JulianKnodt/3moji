@@ -105,6 +105,9 @@ func NewServer() *Server {
 
 func (srv *Server) Serve(addr string) error {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Server is live."))
+	})
 	mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
 	mux.HandleFunc("/api/v1/login/", srv.LoginHandler())
 	// TODO add logout handler
