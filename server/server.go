@@ -1,13 +1,11 @@
+// package main
 package main
 
 import (
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 	// TODO add boltdb for persistence
@@ -51,51 +49,6 @@ type Server struct {
 	Replies       map[Uuid]MessageReply
 }
 
-type Email string
-
-func NewEmail(s string) (Email, error) {
-	if s == "" {
-		return Email(""), fmt.Errorf("Cannot make empty string an email")
-	}
-	// XXX temp
-	if !strings.HasSuffix(s, "princeton.edu") {
-		return Email(""), fmt.Errorf("Currently only accepting princeton emails")
-	}
-
-	return Email(s), nil
-}
-
-type User struct {
-	Uuid  Uuid
-	Name  string
-	Email Email
-	// TODO add other preference fields here
-}
-
-// Message is a struct that represents an emoji message between two people
-type Message struct {
-	Uuid       Uuid
-	Emojis     EmojiContent
-	Source     User
-	Recipients []Email
-}
-
-type MessageReply struct {
-	OriginalContent EmojiContent `json:"originalContent"`
-	Reply           rune         `json:"reply"`
-	From            Email        `json:"from"`
-}
-
-type LoginToken struct {
-	ValidUntil time.Time
-	// uuid is some unique way of representing a log in token so that it cannot be forged with
-	// just the time.
-	Uuid Uuid
-	// awful method of protecting a user, TODO eventually replace this
-
-	UserEmail Email
-}
-
 func NewServer() *Server {
 	return &Server{
 		SignedUp:       map[Email]User{},
@@ -119,6 +72,7 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/friend/", srv.FriendHandler())
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
+	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
 
 	s := http.Server{
 		Addr:           addr,
@@ -177,18 +131,6 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 	return nil
 }
 
-type Uuid uint64
-
-func generateUuid() (Uuid, error) {
-	uuidBytes := [8]byte{}
-	if _, err := rand.Read(uuidBytes[:]); err != nil {
-		return Uuid(0), err
-	}
-
-	uuid := binary.BigEndian.Uint64(uuidBytes[:])
-	return Uuid(uuid), nil
-}
-
 func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, error) {
 	if _, exists := s.SignedUp[userEmail]; !exists {
 		return LoginToken{}, fmt.Errorf("User does not exist")
@@ -240,9 +182,7 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			panic("TODO")
 		}
 		enc := json.NewEncoder(w)
-		if err = enc.Encode(loginToken); err != nil {
-			panic("TODO")
-		}
+		enc.Encode(loginToken)
 		return
 	}
 }
@@ -272,12 +212,11 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 		}
 		loginToken, err := s.Login(email, lp.HashedPassword)
 		if err != nil {
-			panic("TODO")
+			w.WriteHeader(401)
+			return
 		}
 		enc := json.NewEncoder(w)
-		if err = enc.Encode(loginToken); err != nil {
-			panic("TODO")
-		}
+		enc.Encode(loginToken)
 		return
 	}
 }
@@ -331,10 +270,6 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 		return
 	}
 }
-
-// TODO handler for listing friends
-
-type EmojiContent [3]rune
 
 type SendMessageRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
