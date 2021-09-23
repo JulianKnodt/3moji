@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
-// import EmojiBoard from 'react-native-emoji-board';
+import EmojiBoard from 'react-native-emoji-board';
 
 // what views are available for the app
 const views = {
@@ -25,14 +25,32 @@ const MainApp = () =>{
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
-  // TODO fetch friends and invites
-  // const stack = [];
+  const [show, setShow] = useState(false);
+  const [emojis, setEmoji] = useState("");
+  const [emojiError, setEmojiError] = useState("");
+  const onClick = emoji => {
+    console.log(emojis.length)
+    if (emojis.length >= 6){
+      setEmojiError("You can only add three emojis");
+    }else{
+      setEmoji(emojis + emoji.code);
+      setEmojiError("");
+    }
+  };
 
+  const onRemove = () => {
+    if(emojis.length > 0){
+      setEmoji(emojis.substring(0, emojis.length - 2));
+    }
+    if(emojis.length < 6){
+      setEmojiError("");
+    }
+  }
+  // TODO fetch friends and invites
+  console.log(stack);
   const gotoView = (view) => {
-    // console.log(view)
     setStack([...stack,currentView]);
     setCurrentView(view);
-    console.log(stack)
   }
 
   const clearStack = () => {
@@ -40,8 +58,7 @@ const MainApp = () =>{
   }
   
   const back = () => {
-    const [prev, ...rest] = stack;
-    setStack(rest);
+    const prev = stack.pop();
     if (prev!=undefined) setCurrentView(prev);
   }
 
@@ -167,7 +184,11 @@ const MainApp = () =>{
       />
     </View>
     <View style={styles.button}>
-      <Button title="Back" color="#f194ff" onPress={back}/>
+      <Button title="Log out" color="#f194ff" onPress={() => {
+          clearStack(); 
+          setCurrentView(views.Splash)}
+        }
+      />
     </View>
   </View>;
 
@@ -195,25 +216,28 @@ const MainApp = () =>{
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
   </View>
+  const displayEmoji = () =>{
+    const dashs = ['-','-','-']
+    return emojis + dashs.slice(emojis.length).join(" ");
+  }
+
+  const sendEmoji = () => {
+    if(emojis.length == 6){
+      // TODO actually send it
+    }else{
+      setEmojiError("You need to send exactly three emojis");
+    }
+  }
 
   const draftMsg = () => <View style={styles.container}>
-    {/* <TextInput
-      style={styles.input}
-      // TODO automatically bring up emoji picker
-      // keyboardType="email-address"
-      placeholder="Emojis :)"
-      // TODO only accept exactly 3 emojis
-      // onChange={validate_emoji}
-    /> */}
-    <Pressable onPress={() => {}}>
-        <Text>click here</Text>
+    <Text>Sending message to {messaging.name}</Text>
+    <Pressable onPress={() => setShow(!show)}>
+        <Text>{displayEmoji()}</Text>
     </Pressable>
-    <EmojiBoard showBoard={true} onClick={(emoji)=>{console.log(emoji)}} />
-    {/* <EmojiInput
-    onEmojiSelected={(emoji) => {console.log(emoji)}}
-    /> */}
+    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
+    {emojiError !== "" && <Text>{emojiError}</Text>}
     <View style={styles.button}>
-      <Button title="Send" onPress={()=>{}}/>
+      <Button title="Send" onPress={sendEmoji}/>
     </View>
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
@@ -232,14 +256,17 @@ const MainApp = () =>{
               <Button title="👎" onPress={()=>{}}/>
             </View>
             <View style={styles.inviteButton}>
-              <Button title="⌛" onPress={()=>{}}/>
+              <Button title="➕" onPress={()=>{setShow(!show)}}/>
+              
             </View>
         </View>
+        
       </View>
     ))}
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
+    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
   </View>;
 
   const addFriend = () => <View style={styles.container}>
@@ -267,11 +294,11 @@ const MainApp = () =>{
     return signIn();
   }
   else if (currentView == views.Home) return home();
-else if (currentView == views.SendMsg) return sendMsg();
-else if (currentView == views.RecvMsg) return ackMsg();
-else if (currentView == views.DraftMsg) return draftMsg();
-else if (currentView == views.AddFriend) return addFriend();
-else throw `Unknown view {currentView}`;
+  else if (currentView == views.SendMsg) return sendMsg();
+  else if (currentView == views.RecvMsg) return ackMsg();
+  else if (currentView == views.DraftMsg) return draftMsg();
+  else if (currentView == views.AddFriend) return addFriend();
+  else throw `Unknown view {currentView}`;
 
 }
 
