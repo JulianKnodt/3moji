@@ -103,8 +103,8 @@ const MainApp = () =>{
           }
         }
       />
-      {emailError && <Text>{emailError}</Text>}
-      <Text>And name:</Text>
+      {emailError !== "" && <Text>{emailError}</Text>}
+      <Text>{"And name:"}</Text>
       <TextInput
         style={styles.input}
         autoCapitalize="none"
@@ -133,10 +133,10 @@ const MainApp = () =>{
         autoCapitalize="none"
         onSubmitEditting={login}
       />
-      {emailError && <Text>{emailError}</Text>}
+      {emailError !== "" && <Text>{emailError}</Text>}
       <View style={styles.button}>
         <Button title="Login" onPress={() => {
-    login().catch(err => alert("Something went wrong 😱!\n" + err))}}/>
+          login().catch(err => alert("Something went wrong 😱!\n" + err))}}/>
       </View>
       
       <View style={styles.button}>
