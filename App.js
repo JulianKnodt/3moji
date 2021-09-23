@@ -28,6 +28,7 @@ const MainApp = () =>{
   const [show, setShow] = useState(false);
   const [emojis, setEmoji] = useState("");
   const [emojiError, setEmojiError] = useState("");
+  const [passWord, setPassword] = useState("");
   const onClick = emoji => {
     console.log(emojis.length)
     if (emojis.length >= 6){
@@ -121,17 +122,25 @@ const MainApp = () =>{
         }
       />
       {emailError !== "" && <Text>{emailError}</Text>}
-      <Text>{"And name:"}</Text>
+      <Text>{"username:"}</Text>
       <TextInput
         style={styles.input}
         autoCapitalize="none"
         placeholder="Hi, my name is: 🥸"
         onChangeText={setName}
       />
+      
+      <Text>{"and password:"}</Text>
+      <TextInput
+        style={styles.input}
+        autoCapitalize="none"
+        placeholder="my password is: 🔐 "
+        onChangeText={setPassword}
+      />
       <View style={styles.button}>
         <Button title="Sign Up" onPress={signUp}/>
       </View>
-      
+
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={() => back()}/>
       </View>
@@ -148,9 +157,16 @@ const MainApp = () =>{
         keyboardType="email-address"
         placeholder="@princeton.edu"
         autoCapitalize="none"
-        onSubmitEditting={login}
+        onChangeText={setEmail}
       />
       {emailError !== "" && <Text>{emailError}</Text>}
+      <Text>{"and password:"}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="🔐"
+        autoCapitalize="none"
+        onChangeText={setPassword}
+      />
       <View style={styles.button}>
         <Button title="Login" onPress={() => {
           login().catch(err => alert("Something went wrong 😱!\n" + err))}}/>
