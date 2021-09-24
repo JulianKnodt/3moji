@@ -2,18 +2,11 @@ import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 import EmojiBoard from 'react-native-emoji-board';
-
+import {views} from './constants'
+// import { Splash } from './views/Splash';
+import {styles} from './styles';
 // what views are available for the app
-const views = {
-  Splash: "Splash",
-  SignUp: "SignUp",
-  SignIn: "SignIn",
-  Home: "Home",
-  SendMsg: "SendMsg",
-  RecvMsg: "RecvMsg",
-  DraftMsg: "DraftMsg",
-  AddFriend: "AddFriend"
-}
+
 
 const MainApp = () =>{
   const [currentView,setCurrentView] = useState(views.Splash);
@@ -313,7 +306,7 @@ const MainApp = () =>{
   </View>};
 
   if (currentView == views.Splash){
-    return <Splash />;
+    return <Splash gotoView={gotoView}/>;
   } else if (currentView == views.SignUp){
     return <SignUp />;
   } else if (currentView == views.SignIn){
@@ -330,61 +323,3 @@ const MainApp = () =>{
 
 export default MainApp;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20
-  },
-  input: {
-    height: 40,
-    width: 180,
-    margin: 12,
-    borderWidth: 1,
-    padding: 10,
-  },
-  inviteContainer:{
-    width: "100%",
-    height: "20%",
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 25,
-  },
-  reactContainer:{
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inviteText:{
-    fontSize: 20,
-  },
-  inviteButton:{
-    width: 50,
-    height: 50,
-    padding: 10,
-  },
-  button: {
-    width: '50%',
-    padding: 10,
-  },
-  friendList:{
-    width: '100%',
-    borderBottomColor: 'grey',
-    borderBottomEndRadius: 1,
-  },
-  addFriendContainer:{
-    padding: 10,
-    width: '50%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  mainContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
-});
