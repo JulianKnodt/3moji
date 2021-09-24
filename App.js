@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { Component, useState } from 'react';
+import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 import EmojiBoard from 'react-native-emoji-board';
 
@@ -29,6 +29,15 @@ const MainApp = () =>{
   const [emojis, setEmoji] = useState("");
   const [emojiError, setEmojiError] = useState("");
   const [passWord, setPassword] = useState("");
+  const [users, setUsers] = useState([]);
+  // TODO actually fetch users
+  useEffect(() => {  
+    setUsers([
+      {name: "juju", email: "jknodt@princeton.edu",},
+      {name:'YX',email:"yx.edu"},
+      {name:'Chen',email:'qc.edu'}
+    ])
+  },[]);
   const onClick = emoji => {
     console.log(emojis.length)
     if (emojis.length >= 6){
@@ -91,8 +100,8 @@ const MainApp = () =>{
     setEmailError(error);
   }
 
-  const splash = () => (
-  <View style={styles.container}>
+  const Splash = () => {
+  return <View style={styles.container}>
     <Text>📭📩🙌!</Text>
     <View style={styles.button}>
       <Button title="Sign In" onPress={() => gotoView(views.SignIn)}/>
@@ -104,11 +113,11 @@ const MainApp = () =>{
     
     <StatusBar style="auto"/>
   </View>
-);
+};
 
   // component for signing up for the app
-  const signUp = () => (
-    <View style={styles.container}>
+  const SignUp = () => { 
+    return <View style={styles.container}>
       <Text>{"Please fill in your email:"}</Text>
       <TextInput
         style={styles.input}
@@ -138,7 +147,7 @@ const MainApp = () =>{
         onChangeText={setPassword}
       />
       <View style={styles.button}>
-        <Button title="Sign Up" onPress={signUp}/>
+        <Button title="Sign Up" onPress={signup}/>
       </View>
 
       <View style={styles.button}>
@@ -146,11 +155,11 @@ const MainApp = () =>{
       </View>
       
     </View>
-  );
+  };
 
   // component for signing in to the app.
-  const signIn = () => (
-    <View style={styles.container}>
+  const SignIn = () => {
+    return <View style={styles.container}>
       <Text>{"Please fill in your Princeton Email:"}</Text>
       <TextInput
         style={styles.input}
@@ -177,9 +186,9 @@ const MainApp = () =>{
       </View>
       
     </View>
-  );
+  };
 
-  const home = () => <View style={styles.container}>
+  const Home = () => {return <View style={styles.container}>
     <View style={styles.button}>
       <Button
         title="✉️🥺❓"
@@ -206,17 +215,13 @@ const MainApp = () =>{
         }
       />
     </View>
-  </View>;
+  </View>};
 
-  const sendMsg = () => <View style={styles.container}>
-    {console.log(friends)}
+  const SendMsg = () => { 
+    return <View style={styles.container}>
+    {/* <View style={styles.mainContent}> */}
     {friends.map(friend => (
       <>
-      {/* <View style={styles.friendList}>
-        <Pressable onPress={()=>{}}>  
-          <Text>{friend.name}</Text>
-        </Pressable>
-      </View> */}
         <View style={styles.button}>
           <Button
             title={friend.name} 
@@ -228,10 +233,11 @@ const MainApp = () =>{
         
       </>
     ))}
+    {/* </View> */}
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-  </View>
+  </View>};
   const displayEmoji = () =>{
     const dashs = ['-','-','-']
     return emojis + dashs.slice(emojis.length).join(" ");
@@ -245,7 +251,7 @@ const MainApp = () =>{
     }
   }
 
-  const draftMsg = () => <View style={styles.container}>
+  const DraftMsg = () => { return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Pressable onPress={() => setShow(!show)}>
         <Text>{displayEmoji()}</Text>
@@ -258,9 +264,11 @@ const MainApp = () =>{
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-  </View>;
+  </View>};
 
-  const ackMsg = () => <View style={styles.container}>
+  const AckMsg = () => { 
+    return <View style={styles.container}>
+      {/* <View style={styles.mainContent}> */}
     {invites.map(invite=>(
         <View  style={styles.inviteContainer}>
           <Text style={styles.inviteText}>{invite.from.name}: {invite.emojis}?</Text>
@@ -273,311 +281,52 @@ const MainApp = () =>{
             </View>
             <View style={styles.inviteButton}>
               <Button title="➕" onPress={()=>{setShow(!show)}}/>
-              
             </View>
+          </View>
         </View>
-        
-      </View>
     ))}
+    {/* </View> */}
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
     <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
-  </View>;
+  </View>};
 
-  const addFriend = () => <View style={styles.container}>
-    <Text>Please enter your friend's email address:</Text>
-    <TextInput
-      style={styles.input}
-      keyboardType="email-address"
-      autoCapitalize="none"
-      placeholder="@princeton.edu"
-      onChangeText={()=>{}}
-    />
-    <View style={styles.button}>
-      <Button title="➕🤗💛" onPress={()=>{}}/>
-    </View>
+  const AddFriend = () => { 
+    return <View style={styles.container}>
+      {/* <View style={styles.mainContent}> */}
+    {users.filter(u => u.email !== user.email).map(
+      u => <>
+      <View style={styles.addFriendContainer}>
+        <Text>{u.name}</Text>
+        <View>
+          <Button title="➕" onPress={()=>{}}/>
+        </View>
+      </View>
+      
+    </>
+    )}
+    {/* </View> */}
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-  </View>;
+  </View>};
 
   if (currentView == views.Splash){
-    return splash();
+    return <Splash />;
   } else if (currentView == views.SignUp){
-    return signUp();
+    return <SignUp />;
   } else if (currentView == views.SignIn){
-    return signIn();
+    return <SignIn />;
   }
-  else if (currentView == views.Home) return home();
-  else if (currentView == views.SendMsg) return sendMsg();
-  else if (currentView == views.RecvMsg) return ackMsg();
-  else if (currentView == views.DraftMsg) return draftMsg();
-  else if (currentView == views.AddFriend) return addFriend();
+  else if (currentView == views.Home) return <Home />;
+  else if (currentView == views.SendMsg) return <SendMsg />;
+  else if (currentView == views.RecvMsg) return <AckMsg />;
+  else if (currentView == views.DraftMsg) return <DraftMsg />;
+  else if (currentView == views.AddFriend) return <AddFriend />;
   else throw `Unknown view {currentView}`;
 
 }
-
-// class MainApp extends Component {
-//   // react state
-//   state = {view: views.Splash}
-//   // stack of which views were visited
-//   stack = [];
-//   // current views state (in theory can put this on the stack too)
-
-//   goto_view(view) {
-//     this.stack.push(this.state);
-//     this.setState({view: view});
-//   }
-//   clear_stack() { this.stack = [] };
-//   back() {
-//     const prev = this.stack.pop();
-//     if (prev!=undefined) this.setState(prev);
-//   }
-//   async login() {
-//     // TODO fill this in with a server address and actually use it
-//     // const resp = await fetch("http://localhost:8080");
-//     // const json = await resp.json();
-//     const tempUser = {
-//       name: "juju",
-//       email: "jknodt@princeton.edu",
-//     }
-//     this.setState({
-//                   user: tempUser,
-//                   friends: [{name:'YX',email:"yx.edu"},{name:'Chen',email:'qc.edu'}],
-//                   invites: [{from:{name:'YX',email:"yx.edu"},emojis:"🍫🍦🍰"},
-//                             {from:{name:'Chen',email:'qc.edu'},emojis:"🍣🍜🍛"}],
-//                 });
-//     this.goto_view(views.Home)
-//   }
-//   async signup() {
-//     throw "NotImplementedError"
-//   }
-//   validate_email() {
-//     const error = (() => {
-//       if (!this.state.email) return null
-//       if (this.state.email == "") return null;
-//       if (!this.state.email.endsWith("princeton.edu")) {
-//         return "Only accepting princeton emails currently.";
-//       };
-//     })();
-//     this.setState({email_error: error});
-//   }
-//   render() {
-//     // TODO when you restart the app you always get sent to the splash screen how to do you make
-//     // it so that you get sent to the home screen?
-//     const login = this.login.bind(this);
-//     const signup = this.signup.bind(this)
-//     const back = this.back.bind(this);
-//     const goto_view = this.goto_view.bind(this);
-//     const set_state = this.setState.bind(this);
-
-//     const v = views[this.state.view];
-//     if (v == views.Splash)
-//       return splash(() => this.goto_view(views.SignIn), () => this.goto_view(views.SignUp));
-//     else if (v == views.SignUp) return sign_up(
-//       back,
-//       email => { this.state.email = email; this.validate_email(); },
-//       name => { this.state.name = name },
-//       () => { this.signup() },
-//       this.state.email_error,
-//     );
-//     else if (v == views.SignIn) return sign_in(
-//       back,
-//       () => {
-//         login().catch(err => alert("Something went wrong 😱!\n" + err))
-//       },
-//       this.state.email_error,
-//     );
-//     else if (v == views.Home) return home(goto_view,back);
-//     else if (v == views.SendMsg) return send_msg(this.state.friends,set_state,goto_view,back);
-//     else if (v == views.RecvMsg) return ack_msg(this.state.invites,back);
-//     else if (v == views.DraftMsg) return draft_msg(back,this.state.messaging);
-//     else if (v == views.AddFriend) return add_friend(back);
-//     else throw `Unknown view {v}`;
-//   }
-// }
-
-// const splash = (sign_in, sign_up) => (
-//   <View style={styles.container}>
-//     <Text>📭📩🙌!</Text>
-//     <View style={styles.button}>
-//       <Button title="Sign In" onPress={sign_in}/>
-//     </View>
-    
-//     <View style={styles.button}>
-//       <Button title="Sign Up" onPress={sign_up}/>
-//     </View>
-    
-//     <StatusBar style="auto"/>
-//   </View>
-// );
-
-// // component for signing up for the app
-// const sign_up = (back, set_email, set_name, done, email_error) => (
-//   <View style={styles.container}>
-//     <Text>Please fill in your email:</Text>
-//     <TextInput
-//       style={styles.input}
-//       keyboardType="email-address"
-//       autoCapitalize="none"
-//       placeholder="@princeton.edu"
-//       onChangeText={set_email}
-//     />
-//     {email_error && <Text>{email_error}</Text>}
-//     <Text>And name:</Text>
-//     <TextInput
-//       style={styles.input}
-//       autoCapitalize="none"
-//       placeholder="Hi, my name is: 🥸"
-//       onChangeText={set_name}
-//     />
-//     <View style={styles.button}>
-//       <Button title="Sign Up" onPress={sign_up}/>
-//     </View>
-    
-//     <View style={styles.button}>
-//       <Button title="Back" color="#f194ff" onPress={back}/>
-//     </View>
-    
-//   </View>
-// );
-
-// // component for signing in to the app.
-// const sign_in = (back, login, email_error) => (
-//   <View style={styles.container}>
-//     <Text>Please fill in your Princeton Email:</Text>
-//     <TextInput
-//       style={styles.input}
-//       keyboardType="email-address"
-//       placeholder="@princeton.edu"
-//       autoCapitalize="none"
-//       onSubmitEditting={login}
-//     />
-//     {email_error && <Text>{email_error}</Text>}
-//     <View style={styles.button}>
-//       <Button title="Login" onPress={() => { login() }}/>
-//     </View>
-    
-//     <View style={styles.button}>
-//       <Button title="Back" color="#f194ff" onPress={back}/>
-//     </View>
-    
-//   </View>
-// );
-
-// const home = (goto_view,back) => <View style={styles.container}>
-//   <View style={styles.button}>
-//     <Button
-//       title="✉️🥺❓"
-//       onPress={() => goto_view(views.SendMsg)}
-//     />
-    
-//   </View>
-//   <View style={styles.button}>
-//     <Button 
-//       title="📫😆❗" 
-//       onPress={() => goto_view(views.RecvMsg)}
-//     />
-//   </View>
-//   <View style={styles.button}>
-//     <Button 
-//       title="➕😊🥰"
-//       onPress={() => goto_view(views.AddFriend)}
-//     />
-//   </View>
-//   <View style={styles.button}>
-//     <Button title="Back" color="#f194ff" onPress={back}/>
-//   </View>
-// </View>;
-
-// const send_msg = (friends,set_state,goto_view,back) => <View style={styles.container}>
-//   {console.log(friends)}
-//   {friends.map(friend => (
-//     <>
-//     {/* <View style={styles.friendList}>
-//       <Pressable onPress={()=>{}}>  
-//         <Text>{friend.name}</Text>
-//       </Pressable>
-//     </View> */}
-//       <View style={styles.button}>
-//         <Button
-//           title={friend.name} 
-//           onPress={()=>{
-//             set_state({messaging:friend});
-//             goto_view(views.DraftMsg);
-//         }}/>
-//       </View>
-      
-//     </>
-//   ))}
-//   <View style={styles.button}>
-//     <Button title="Back" color="#f194ff" onPress={back}/>
-//   </View>
-// </View>
-
-// const draft_msg = (back,messaging) => <View style={styles.container}>
-//   {/* <TextInput
-//     style={styles.input}
-//     // TODO automatically bring up emoji picker
-//     // keyboardType="email-address"
-//     placeholder="Emojis :)"
-//     // TODO only accept exactly 3 emojis
-//     // onChange={validate_emoji}
-//   /> */}
-//   <Pressable onPress={() => {}}>
-//       <Text>click here</Text>
-//   </Pressable>
-//   <EmojiBoard showBoard={true} onClick={(emoji)=>{console.log(emoji)}} />
-//   {/* <EmojiInput
-// 	onEmojiSelected={(emoji) => {console.log(emoji)}}
-// 	/> */}
-//   <View style={styles.button}>
-//     <Button title="Send" onPress={()=>{}}/>
-//   </View>
-//   <View style={styles.button}>
-//     <Button title="Back" color="#f194ff" onPress={back}/>
-//   </View>
-// </View>;
-
-// const ack_msg = (invites,back) => <View style={styles.container}>
-//   {invites.map(invite=>(
-//       <View  style={styles.inviteContainer}>
-//         <Text style={styles.inviteText}>{invite.from.name}: {invite.emojis}?</Text>
-//         <View style={styles.reactContainer}>
-//           <View style={styles.inviteButton}>
-//             <Button title="👍" onPress={()=>{}}/>
-//           </View>
-//           <View style={styles.inviteButton}>
-//             <Button title="👎" onPress={()=>{}}/>
-//           </View>
-//           <View style={styles.inviteButton}>
-//             <Button title="⌛" onPress={()=>{}}/>
-//           </View>
-//       </View>
-//     </View>
-//   ))}
-//   <View style={styles.button}>
-//     <Button title="Back" color="#f194ff" onPress={back}/>
-//   </View>
-// </View>;
-
-// const add_friend = (back) => <View style={styles.container}>
-//   <Text>Please enter your friend's email address:</Text>
-//   <TextInput
-//     style={styles.input}
-//     keyboardType="email-address"
-//     autoCapitalize="none"
-//     placeholder="@princeton.edu"
-//     onChangeText={()=>{}}
-//   />
-//   <View style={styles.button}>
-//     <Button title="➕🤗💛" onPress={()=>{}}/>
-//   </View>
-//   <View style={styles.button}>
-//     <Button title="Back" color="#f194ff" onPress={back}/>
-//   </View>
-// </View>;
 
 export default MainApp;
 
@@ -587,6 +336,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20
   },
   input: {
     height: 40,
@@ -597,8 +347,9 @@ const styles = StyleSheet.create({
   },
   inviteContainer:{
     width: "100%",
+    height: "20%",
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     padding: 25,
   },
   reactContainer:{
@@ -612,6 +363,7 @@ const styles = StyleSheet.create({
   },
   inviteButton:{
     width: 50,
+    height: 50,
     padding: 10,
   },
   button: {
@@ -622,5 +374,17 @@ const styles = StyleSheet.create({
     width: '100%',
     borderBottomColor: 'grey',
     borderBottomEndRadius: 1,
+  },
+  addFriendContainer:{
+    padding: 10,
+    width: '50%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mainContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   }
 });
