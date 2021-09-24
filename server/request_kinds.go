@@ -64,6 +64,13 @@ type LoginRequest struct {
 	HashedPassword string `json:"hashedPassword"`
 }
 
+// Also doubles as SignupResponse
+type LoginResponse struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Uuid  Uuid   `json:"uuid"`
+}
+
 type SendMessageRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
 	// The uuid for the message is generated on the server side

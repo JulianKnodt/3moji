@@ -10,11 +10,11 @@ export const Splash = (gotoView) => {
       <View style={styles.button}>
         <Button title="Sign In" onPress={gotoView(views.SignIn)}/>
       </View>
-      
+
       <View style={styles.button}>
         <Button title="Sign Up" onPress={() => gotoView(views.SignUp)}/>
       </View>
-      
+
       <StatusBar style="auto"/>
     </View>
 };

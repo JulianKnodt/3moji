@@ -2,11 +2,11 @@ import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 import EmojiBoard from 'react-native-emoji-board';
-import {views} from './constants'
-// import { Splash } from './views/Splash';
-import {styles} from './styles';
-// what views are available for the app
+import { views } from './constants'
+import { styles } from './styles';
+import * as Crypto from 'expo-crypto';
 
+const serverURL = "https://api-3moji.herokuapp.com/";
 
 const MainApp = () =>{
   const [currentView,setCurrentView] = useState(views.Splash);
@@ -24,7 +24,7 @@ const MainApp = () =>{
   const [passWord, setPassword] = useState("");
   const [users, setUsers] = useState([]);
   // TODO actually fetch users
-  useEffect(() => {  
+  useEffect(() => {
     setUsers([
       {name: "juju", email: "jknodt@princeton.edu",},
       {name:'YX',email:"yx.edu"},
@@ -32,7 +32,6 @@ const MainApp = () =>{
     ])
   },[]);
   const onClick = emoji => {
-    console.log(emojis.length)
     if (emojis.length >= 6){
       setEmojiError("You can only add three emojis");
     }else{
@@ -50,7 +49,6 @@ const MainApp = () =>{
     }
   }
   // TODO fetch friends and invites
-  console.log(stack);
   const gotoView = (view) => {
     setStack([...stack,currentView]);
     setCurrentView(view);
@@ -59,16 +57,32 @@ const MainApp = () =>{
   const clearStack = () => {
     setStack([]);
   }
-  
+
   const back = () => {
     const prev = stack.pop();
     if (prev!=undefined) setCurrentView(prev);
   }
 
-  const login = async() => {
-    // TODO fill this in with a server address and actually use it
-    // const resp = await fetch("http://localhost:8080");
-    // const json = await resp.json();
+  const login = async (email, password) => {
+    const digest = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      password,
+    );
+    console.log(digest);
+    const resp = await fetch(url + "api/v1/login/", {
+      method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          hashedPassword: digest,
+        }),
+    });
+    const resp_json = await resp.json();
+    console.log(resp_json);
+
     const tempUser = {
       name: "juju",
       email: "jknodt@princeton.edu",
@@ -94,22 +108,22 @@ const MainApp = () =>{
   }
 
   const Splash = () => {
-  return <View style={styles.container}>
-    <Text>📭📩🙌!</Text>
-    <View style={styles.button}>
-      <Button title="Sign In" onPress={() => gotoView(views.SignIn)}/>
+    return <View style={styles.container}>
+      <Text>📭📩🙌!</Text>
+      <View style={styles.button}>
+        <Button title="Sign In" onPress={() => gotoView(views.SignIn)}/>
+      </View>
+
+      <View style={styles.button}>
+        <Button title="Sign Up" onPress={() => gotoView(views.SignUp)}/>
+      </View>
+
+      <StatusBar style="auto"/>
     </View>
-    
-    <View style={styles.button}>
-      <Button title="Sign Up" onPress={() => gotoView(views.SignUp)}/>
-    </View>
-    
-    <StatusBar style="auto"/>
-  </View>
-};
+  };
 
   // component for signing up for the app
-  const SignUp = () => { 
+  const SignUp = () => {
     return <View style={styles.container}>
       <Text>{"Please fill in your email:"}</Text>
       <TextInput
@@ -118,8 +132,8 @@ const MainApp = () =>{
         autoCapitalize="none"
         placeholder="@princeton.edu"
         onChangeText={(email) => {
-            setEmail(email);
-            validateEmail();
+            //setEmail(email);
+            //validateEmail();
           }
         }
       />
@@ -131,7 +145,7 @@ const MainApp = () =>{
         placeholder="Hi, my name is: 🥸"
         onChangeText={setName}
       />
-      
+
       <Text>{"and password:"}</Text>
       <TextInput
         style={styles.input}
@@ -146,7 +160,6 @@ const MainApp = () =>{
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={() => back()}/>
       </View>
-      
     </View>
   };
 
@@ -159,7 +172,7 @@ const MainApp = () =>{
         keyboardType="email-address"
         placeholder="@princeton.edu"
         autoCapitalize="none"
-        onChangeText={setEmail}
+        //onChangeText={setEmail}
       />
       {emailError !== "" && <Text>{emailError}</Text>}
       <Text>{"and password:"}</Text>
@@ -167,17 +180,15 @@ const MainApp = () =>{
         style={styles.input}
         placeholder="🔐"
         autoCapitalize="none"
-        onChangeText={setPassword}
+        //onChangeText={setPassword}
       />
       <View style={styles.button}>
         <Button title="Login" onPress={() => {
           login().catch(err => alert("Something went wrong 😱!\n" + err))}}/>
       </View>
-      
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
       </View>
-      
     </View>
   };
 
@@ -296,7 +307,6 @@ const MainApp = () =>{
           <Button title="➕" onPress={()=>{}}/>
         </View>
       </View>
-      
     </>
     )}
     {/* </View> */}
