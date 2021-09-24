@@ -67,8 +67,10 @@ type LoginRequest struct {
 // Also doubles as SignupResponse
 type LoginResponse struct {
 	Name  string `json:"name"`
-	Email string `json:"email"`
+	Email Email  `json:"email"`
 	Uuid  Uuid   `json:"uuid"`
+
+	LoginToken LoginToken `json:"loginToken"`
 }
 
 type SendMessageRequest struct {

@@ -107,16 +107,16 @@ func (s *Server) Cleanup() {
 }
 */
 
-func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string) error {
+func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string) (Uuid, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.SignedUp[userEmail]; exists {
-		return fmt.Errorf("User already exists")
+		return Uuid(0), fmt.Errorf("User already exists")
 	}
 
 	uuid, err := generateUuid()
 	if err != nil {
-		return err
+		return Uuid(0), err
 	}
 	s.SignedUp[userEmail] = User{
 		Name:  userName,
@@ -125,7 +125,7 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 	}
 	s.HashedPasswords[uuid] = hashedPassword
 
-	return nil
+	return uuid, nil
 }
 
 func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, error) {
@@ -180,7 +180,8 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		enc := json.NewEncoder(w)
-		if err := s.SignUp(email, sup.Name, sup.HashedPassword); err != nil {
+		uuid, err := s.SignUp(email, sup.Name, sup.HashedPassword)
+		if err != nil {
 			w.WriteHeader(401)
 			enc.Encode(err)
 			return
@@ -191,7 +192,13 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			enc.Encode(err)
 			return
 		}
-		enc.Encode(loginToken)
+		resp := LoginResponse{
+			Name:       sup.Name,
+			Email:      email,
+			Uuid:       uuid,
+			LoginToken: loginToken,
+		}
+		enc.Encode(resp)
 		return
 	}
 }
@@ -214,14 +221,25 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(err)
 			return
 		}
-		enc := json.NewEncoder(w)
 		loginToken, err := s.Login(email, lp.HashedPassword)
+		enc := json.NewEncoder(w)
 		if err != nil {
 			w.WriteHeader(401)
 			enc.Encode(err)
 			return
 		}
-		enc.Encode(loginToken)
+		user, exists := s.UserFor(loginToken)
+		if !exists {
+			w.WriteHeader(500)
+			return
+		}
+		resp := LoginResponse{
+			Name:       user.Name,
+			Email:      email,
+			Uuid:       user.Uuid,
+			LoginToken: loginToken,
+		}
+		enc.Encode(resp)
 		return
 	}
 }
