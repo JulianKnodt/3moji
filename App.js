@@ -10,9 +10,9 @@ const serverURL = "https://api-3moji.herokuapp.com/";
 
 const MainApp = () =>{
   const [currentView,setCurrentView] = useState(views.Splash);
-  const [email,setEmail] = useState("");
-  const [name,setName] = useState("");
-  const [emailError,setEmailError] = useState("");
+  // const [email,setEmail] = useState("");
+  // const [name,setName] = useState("");
+  
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
   const [invites, setInvites] = useState([]);
@@ -21,7 +21,7 @@ const MainApp = () =>{
   const [show, setShow] = useState(false);
   const [emojis, setEmoji] = useState("");
   const [emojiError, setEmojiError] = useState("");
-  const [passWord, setPassword] = useState("");
+  const [password, setPassword] = useState("");
   const [users, setUsers] = useState([]);
   // TODO actually fetch users
   useEffect(() => {
@@ -96,8 +96,9 @@ const MainApp = () =>{
   const signup = async() =>{
     throw "NotImplementedError"
   }
-  const  validateEmail = () => {
+  const  validateEmail = (email,setEmailError) => {
     const error = (() => {
+      console.log(email)
       if (!email) return null
       if (email == "") return null;
       if (!email.endsWith("princeton.edu")) {
@@ -120,10 +121,15 @@ const MainApp = () =>{
 
       <StatusBar style="auto"/>
     </View>
+    
   };
 
   // component for signing up for the app
-  const SignUp = () => {
+  const SignUp = () => { 
+    const [email,setEmail] = useState("");
+    const [name,setName] = useState("");
+    const [password, setPassword] = useState("");
+    const [emailError,setEmailError] = useState("");
     return <View style={styles.container}>
       <Text>{"Please fill in your email:"}</Text>
       <TextInput
@@ -131,9 +137,10 @@ const MainApp = () =>{
         keyboardType="email-address"
         autoCapitalize="none"
         placeholder="@princeton.edu"
-        onChangeText={(email) => {
-            //setEmail(email);
-            //validateEmail();
+        defaultValue={email}
+        onChangeText={(text) => {
+            setEmail(text);
+            validateEmail(text,setEmailError);
           }
         }
       />
@@ -143,7 +150,11 @@ const MainApp = () =>{
         style={styles.input}
         autoCapitalize="none"
         placeholder="Hi, my name is: 🥸"
-        onChangeText={setName}
+        onChangeText={(text) => {
+          setEmail(text);
+          validateEmail(text,setEmailError);
+        }
+      }
       />
 
       <Text>{"and password:"}</Text>
@@ -151,6 +162,7 @@ const MainApp = () =>{
         style={styles.input}
         autoCapitalize="none"
         placeholder="my password is: 🔐 "
+        secureTextEntry={true}
         onChangeText={setPassword}
       />
       <View style={styles.button}>
@@ -165,6 +177,10 @@ const MainApp = () =>{
 
   // component for signing in to the app.
   const SignIn = () => {
+    const [email,setEmail] = useState("");
+    const [name,setName] = useState("");
+    const [password, setPassword] = useState("");
+    const [emailError,setEmailError] = useState("");
     return <View style={styles.container}>
       <Text>{"Please fill in your Princeton Email:"}</Text>
       <TextInput
@@ -172,7 +188,11 @@ const MainApp = () =>{
         keyboardType="email-address"
         placeholder="@princeton.edu"
         autoCapitalize="none"
-        //onChangeText={setEmail}
+        onChangeText={(text) => {
+          setEmail(text);
+          validateEmail(text,setEmailError);
+        }
+      }
       />
       {emailError !== "" && <Text>{emailError}</Text>}
       <Text>{"and password:"}</Text>
@@ -180,7 +200,8 @@ const MainApp = () =>{
         style={styles.input}
         placeholder="🔐"
         autoCapitalize="none"
-        //onChangeText={setPassword}
+        secureTextEntry={true}
+        onChangeText={setPassword}
       />
       <View style={styles.button}>
         <Button title="Login" onPress={() => {
@@ -316,7 +337,7 @@ const MainApp = () =>{
   </View>};
 
   if (currentView == views.Splash){
-    return <Splash gotoView={gotoView}/>;
+    return <Splash />;
   } else if (currentView == views.SignUp){
     return <SignUp />;
   } else if (currentView == views.SignIn){
