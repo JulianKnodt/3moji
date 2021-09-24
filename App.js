@@ -78,7 +78,8 @@ const MainApp = () =>{
           hashedPassword: digest,
         }),
     });
-    console.log(resp);
+    console.log(resp.status);
+    console.log(await resp.text());
     const resp_json = await resp.json();
     console.log(resp_json);
 
@@ -97,7 +98,8 @@ const MainApp = () =>{
       Crypto.CryptoDigestAlgorithm.SHA256,
       password,
     );
-    const dst = serverURL + "api/v1/signup/";
+    const dst = serverURL + "api/v1/sign_up/";
+    console.log("here", dst)
     const resp = await fetch(dst, {
       method: 'POST',
         headers: {
@@ -110,8 +112,7 @@ const MainApp = () =>{
           hashedPassword: digest,
         }),
     });
-    console.log(resp);
-    console.log(await resp.text());
+    console.log(resp.status);
     const resp_json = await resp.json();
     console.log(resp_json);
   }

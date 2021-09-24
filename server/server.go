@@ -73,11 +73,11 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
-  /*
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Server is live."))
-	})
-  */
+	/*
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Server is live."))
+		})
+	*/
 
 	s := http.Server{
 		Addr:           addr,
@@ -232,6 +232,7 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 		}
 		user, exists := s.UserFor(loginToken)
 		if !exists {
+			fmt.Println(s.Users)
 			w.WriteHeader(500)
 			return
 		}
