@@ -151,8 +151,7 @@ const MainApp = () =>{
         autoCapitalize="none"
         placeholder="Hi, my name is: 🥸"
         onChangeText={(text) => {
-          setEmail(text);
-          validateEmail(text,setEmailError);
+          setName(text);
         }
       }
       />
