@@ -66,9 +66,6 @@ func NewServer() *Server {
 
 func (srv *Server) Serve(addr string) error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Server is live."))
-	})
 	mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
 	mux.HandleFunc("/api/v1/login/", srv.LoginHandler())
 	// TODO add logout handler
@@ -76,6 +73,11 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
+  /*
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Server is live."))
+	})
+  */
 
 	s := http.Server{
 		Addr:           addr,

@@ -10,9 +10,7 @@ const serverURL = "https://api-3moji.herokuapp.com/";
 
 const MainApp = () =>{
   const [currentView,setCurrentView] = useState(views.Splash);
-  // const [email,setEmail] = useState("");
-  // const [name,setName] = useState("");
-  
+
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
   const [invites, setInvites] = useState([]);
@@ -69,7 +67,7 @@ const MainApp = () =>{
       password,
     );
     console.log(digest);
-    const resp = await fetch(url + "api/v1/login/", {
+    const resp = await fetch(serverURL + "api/v1/login/", {
       method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -80,6 +78,7 @@ const MainApp = () =>{
           hashedPassword: digest,
         }),
     });
+    console.log(resp);
     const resp_json = await resp.json();
     console.log(resp_json);
 
@@ -93,8 +92,28 @@ const MainApp = () =>{
                             {from:{name:'Chen',email:'qc.edu'},emojis:"🍣🍜🍛"}]);
     gotoView(views.Home)
   }
-  const signup = async() =>{
-    throw "NotImplementedError"
+  const signup = async (name, email, password) =>{
+    const digest = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      password,
+    );
+    const dst = serverURL + "api/v1/signup/";
+    const resp = await fetch(dst, {
+      method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          hashedPassword: digest,
+        }),
+    });
+    console.log(resp);
+    console.log(await resp.text());
+    const resp_json = await resp.json();
+    console.log(resp_json);
   }
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
@@ -121,11 +140,11 @@ const MainApp = () =>{
 
       <StatusBar style="auto"/>
     </View>
-    
+
   };
 
   // component for signing up for the app
-  const SignUp = () => { 
+  const SignUp = () => {
     const [email,setEmail] = useState("");
     const [name,setName] = useState("");
     const [password, setPassword] = useState("");
@@ -165,7 +184,9 @@ const MainApp = () =>{
         onChangeText={setPassword}
       />
       <View style={styles.button}>
-        <Button title="Sign Up" onPress={signup}/>
+        <Button title="Sign Up" onPress={async () =>
+        signup(name, email, password).catch(err => alert("Something went wrong 😱!\n" + err))
+        }/>
       </View>
 
       <View style={styles.button}>
@@ -203,8 +224,8 @@ const MainApp = () =>{
         onChangeText={setPassword}
       />
       <View style={styles.button}>
-        <Button title="Login" onPress={() => {
-          login().catch(err => alert("Something went wrong 😱!\n" + err))}}/>
+        <Button title="Login" onPress={async () => {
+          login(email, password).catch(err => alert("Something went wrong 😱!\n" + err))}}/>
       </View>
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
@@ -218,43 +239,43 @@ const MainApp = () =>{
         title="✉️🥺❓"
         onPress={() => gotoView(views.SendMsg)}
       />
-      
+
     </View>
     <View style={styles.button}>
-      <Button 
-        title="📫😆❗" 
+      <Button
+        title="📫😆❗"
         onPress={() => gotoView(views.RecvMsg)}
       />
     </View>
     <View style={styles.button}>
-      <Button 
+      <Button
         title="➕😊🥰"
         onPress={() => gotoView(views.AddFriend)}
       />
     </View>
     <View style={styles.button}>
       <Button title="Log out" color="#f194ff" onPress={() => {
-          clearStack(); 
+          clearStack();
           setCurrentView(views.Splash)}
         }
       />
     </View>
   </View>};
 
-  const SendMsg = () => { 
+  const SendMsg = () => {
     return <View style={styles.container}>
     {/* <View style={styles.mainContent}> */}
     {friends.map(friend => (
       <>
         <View style={styles.button}>
           <Button
-            title={friend.name} 
+            title={friend.name}
             onPress={()=>{
               setMessaging(friend);
               gotoView(views.DraftMsg);
           }}/>
         </View>
-        
+
       </>
     ))}
     {/* </View> */}
@@ -290,7 +311,7 @@ const MainApp = () =>{
     </View>
   </View>};
 
-  const AckMsg = () => { 
+  const AckMsg = () => {
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
     {invites.map(invite=>(
@@ -316,7 +337,7 @@ const MainApp = () =>{
     <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
   </View>};
 
-  const AddFriend = () => { 
+  const AddFriend = () => {
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
     {users.filter(u => u.email !== user.email).map(
