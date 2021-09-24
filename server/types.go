@@ -80,7 +80,6 @@ type LoginToken struct {
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
 	Uuid Uuid `json:"uuid"`
-	// awful method of protecting a user, TODO eventually replace this
 
 	UserEmail Email `json:"userEmail"`
 }

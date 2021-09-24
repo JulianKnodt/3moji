@@ -34,7 +34,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		switch req.Kind {
 		case All:
 			for _, person := range s.Users {
-				resp.People = append(resp.People, person)
+				resp.People = append(resp.People, *person)
 				amt -= 1
 				if amt == 0 {
 					break
@@ -45,7 +45,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 				if _, exists := s.Friends[user.Uuid]; !exists {
 					continue
 				}
-				resp.People = append(resp.People, person)
+				resp.People = append(resp.People, *person)
 				amt -= 1
 				if amt == 0 {
 					break
@@ -56,7 +56,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 				if _, exists := s.Friends[user.Uuid]; exists {
 					continue
 				}
-				resp.People = append(resp.People, person)
+				resp.People = append(resp.People, *person)
 				amt -= 1
 				if amt == 0 {
 					break
@@ -113,7 +113,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			Message:         req.MsgID,
 			OriginalContent: originalMessage.Emojis,
 			Reply:           req.Reply,
-			From:            user,
+			From:            *user,
 		}
 
 		w.WriteHeader(200)

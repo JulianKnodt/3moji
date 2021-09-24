@@ -28,7 +28,7 @@ func main() {
 type Server struct {
 	// mu guards the map of struct who have signed up
 	mu              sync.Mutex
-	SignedUp        map[Email]User
+	SignedUp        map[Email]*User
 	LoggedIn        map[Email]LoginToken
 	HashedPasswords map[Uuid]string
 
@@ -37,7 +37,7 @@ type Server struct {
 	// TODO add a timer so that these will eventually expire or be cleaned up periodically.
 	Messages map[Uuid]Message
 
-	Users map[Uuid]User
+	Users map[Uuid]*User
 	// List of friends for a given user
 	Friends       map[Uuid]map[Uuid]struct{}
 	MutualFriends map[Uuid]map[Uuid]struct{}
@@ -49,14 +49,14 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		SignedUp:        map[Email]User{},
+		SignedUp:        map[Email]*User{},
 		LoggedIn:        map[Email]LoginToken{},
 		HashedPasswords: map[Uuid]string{},
 
 		UserToMessages: map[Uuid][]Uuid{},
 		Messages:       map[Uuid]Message{},
 
-		Users:   map[Uuid]User{},
+		Users:   map[Uuid]*User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
 
 		UserToReplies: map[Uuid][]Uuid{},
@@ -120,11 +120,13 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 	if err != nil {
 		return Uuid(0), err
 	}
-	s.SignedUp[userEmail] = User{
+	user := &User{
 		Name:  userName,
 		Email: userEmail,
 		Uuid:  uuid,
 	}
+	s.SignedUp[userEmail] = user
+	s.Users[uuid] = user
 	s.HashedPasswords[uuid] = hashedPassword
 
 	return uuid, nil
@@ -182,7 +184,7 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		enc := json.NewEncoder(w)
-		uuid, err := s.SignUp(email, sup.Name, sup.HashedPassword)
+		_, err = s.SignUp(email, sup.Name, sup.HashedPassword)
 		if err != nil {
 			w.WriteHeader(401)
 			enc.Encode(err)
@@ -194,10 +196,13 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			enc.Encode(err)
 			return
 		}
+		user, exists := s.UserFor(loginToken)
+		if !exists {
+			w.WriteHeader(500)
+			return
+		}
 		resp := LoginResponse{
-			Name:       sup.Name,
-			Email:      email,
-			Uuid:       uuid,
+			User:       *user,
 			LoginToken: loginToken,
 		}
 		enc.Encode(resp)
@@ -237,9 +242,7 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		resp := LoginResponse{
-			Name:       user.Name,
-			Email:      email,
-			Uuid:       user.Uuid,
+			User:       *user,
 			LoginToken: loginToken,
 		}
 		enc.Encode(resp)
@@ -336,10 +339,10 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 	return nil
 }
 
-func (s *Server) UserFor(token LoginToken) (User, bool) {
+func (s *Server) UserFor(token LoginToken) (*User, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	user, exists := s.Users[token.Uuid]
+	user, exists := s.SignedUp[token.UserEmail]
 	return user, exists
 }
 

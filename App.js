@@ -66,7 +66,6 @@ const MainApp = () =>{
       Crypto.CryptoDigestAlgorithm.SHA256,
       password,
     );
-    console.log(digest);
     const resp = await fetch(serverURL + "api/v1/login/", {
       method: 'POST',
         headers: {
@@ -79,7 +78,6 @@ const MainApp = () =>{
         }),
     });
     console.log(resp.status);
-    console.log(await resp.text());
     const resp_json = await resp.json();
     console.log(resp_json);
 
