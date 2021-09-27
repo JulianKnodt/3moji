@@ -8,6 +8,11 @@ import * as Crypto from 'expo-crypto';
 
 const serverURL = "https://api-3moji.herokuapp.com/";
 
+const displayEmoji = (emojis) =>{
+  const dashs = ['-','-','-']
+  return emojis + dashs.slice(emojis.length).join(" ");
+}
+
 const MainApp = () =>{
   const [currentView,setCurrentView] = useState(views.Splash);
 
@@ -270,13 +275,8 @@ const MainApp = () =>{
   const DraftMsg = () => { 
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
-    
-    const displayEmoji = () =>{
-      const dashs = ['-','-','-']
-      return emojis + dashs.slice(emojis.length).join(" ");
-    }
   
-    const sendEmoji = () => {
+    const sendEmoji = (emojis,setEmojiError) => {
       if(emojis.length == 6){
         // TODO actually send it
       }else{
@@ -304,7 +304,7 @@ const MainApp = () =>{
     return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Pressable onPress={() => setShow(!show)}>
-        <Text>{displayEmoji()}</Text>
+        <Text>{displayEmoji(emojis)}</Text>
     </Pressable>
     <EmojiBoard showBoard={show} 
     onClick={onClick} onRemove={onRemove}
@@ -319,6 +319,8 @@ const MainApp = () =>{
   </View>};
 
   const AckMsg = () => {
+    const [emojis, setEmoji] = useState("");
+    const [emojiError, setEmojiError] = useState("");
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
     {invites.map(invite=>(
@@ -341,7 +343,7 @@ const MainApp = () =>{
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
+    <EmojiBoard showBoard={show} onClick={(emoji)=>{}}/>
   </View>};
 
   const AddFriend = () => {
