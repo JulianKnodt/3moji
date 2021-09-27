@@ -17,8 +17,7 @@ const MainApp = () =>{
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
   const [show, setShow] = useState(false);
-  const [emojis, setEmoji] = useState("");
-  const [emojiError, setEmojiError] = useState("");
+  
   const [password, setPassword] = useState("");
   const [users, setUsers] = useState([]);
   // TODO actually fetch users
@@ -29,23 +28,7 @@ const MainApp = () =>{
       {name:'Chen',email:'qc.edu'}
     ])
   },[]);
-  const onClick = emoji => {
-    if (emojis.length >= 6){
-      setEmojiError("You can only add three emojis");
-    }else{
-      setEmoji(emojis + emoji.code);
-      setEmojiError("");
-    }
-  };
-
-  const onRemove = () => {
-    if(emojis.length > 0){
-      setEmoji(emojis.substring(0, emojis.length - 2));
-    }
-    if(emojis.length < 6){
-      setEmojiError("");
-    }
-  }
+  
   // TODO fetch friends and invites
   const gotoView = (view) => {
     setStack([...stack,currentView]);
@@ -282,25 +265,50 @@ const MainApp = () =>{
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
   </View>};
-  const displayEmoji = () =>{
-    const dashs = ['-','-','-']
-    return emojis + dashs.slice(emojis.length).join(" ");
-  }
+  
 
-  const sendEmoji = () => {
-    if(emojis.length == 6){
-      // TODO actually send it
-    }else{
-      setEmojiError("You need to send exactly three emojis");
+  const DraftMsg = () => { 
+    const [emojis, setEmoji] = useState("");
+    const [emojiError, setEmojiError] = useState("");
+    
+    const displayEmoji = () =>{
+      const dashs = ['-','-','-']
+      return emojis + dashs.slice(emojis.length).join(" ");
     }
-  }
+  
+    const sendEmoji = () => {
+      if(emojis.length == 6){
+        // TODO actually send it
+      }else{
+        setEmojiError("You need to send exactly three emojis");
+      }
+    }
 
-  const DraftMsg = () => { return <View style={styles.container}>
+    const onClick = emoji => {
+      if (emojis.length >= 6){
+        setEmojiError("You can only add three emojis");
+      }else{
+        setEmoji(emojis + emoji.code);
+        setEmojiError("");
+      }
+    };
+  
+    const onRemove = () => {
+      if(emojis.length > 0){
+        setEmoji(emojis.substring(0, emojis.length - 2));
+      }
+      if(emojis.length < 6){
+        setEmojiError("");
+      }
+    }
+    return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Pressable onPress={() => setShow(!show)}>
         <Text>{displayEmoji()}</Text>
     </Pressable>
-    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove}/>
+    <EmojiBoard showBoard={show} 
+    onClick={onClick} onRemove={onRemove}
+    />
     {emojiError !== "" && <Text>{emojiError}</Text>}
     <View style={styles.button}>
       <Button title="Send" onPress={sendEmoji}/>
