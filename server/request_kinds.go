@@ -10,7 +10,7 @@ const (
 
 type ListPeopleRequest struct {
 	Amount     int            `json:"amount"`
-	Kind       ListPeopleKind `json:"friends"`
+	Kind       ListPeopleKind `json:"kind"`
 	LoginToken LoginToken     `json:"loginToken"`
 }
 

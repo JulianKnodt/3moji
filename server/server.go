@@ -38,7 +38,7 @@ type Server struct {
 	Messages map[Uuid]Message
 
 	Users map[Uuid]*User
-	// List of friends for a given user
+	// List of friends for a given user: user -> their friends
 	Friends       map[Uuid]map[Uuid]struct{}
 	MutualFriends map[Uuid]map[Uuid]struct{}
 
@@ -68,16 +68,11 @@ func (srv *Server) Serve(addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/sign_up/", srv.SignUpHandler())
 	mux.HandleFunc("/api/v1/login/", srv.LoginHandler())
-	// TODO add logout handler
+
 	mux.HandleFunc("/api/v1/friend/", srv.FriendHandler())
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
-	/*
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Server is live."))
-		})
-	*/
 
 	s := http.Server{
 		Addr:           addr,
@@ -158,10 +153,13 @@ func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, erro
 	}
 
 	loginToken := LoginToken{
-		ValidUntil: time.Now().Add(72 * time.Hour),
+		ValidUntil: time.Now().Add(72 * time.Hour).Unix(),
 		Uuid:       uuid,
 		UserEmail:  userEmail,
 	}
+	s.mu.Lock()
+	s.LoggedIn[user.Email] = loginToken
+	s.mu.Unlock()
 	return loginToken, nil
 }
 
@@ -264,6 +262,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			return
 		}
 		if err := s.ValidateLoginToken(fp.LoginToken); err != nil {
+			fmt.Printf("Invalid login token: %v", err)
 			w.WriteHeader(401)
 			return
 		}
@@ -333,8 +332,11 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	existingToken, exists := s.LoggedIn[token.UserEmail]
-	if !exists || existingToken != token {
-		return fmt.Errorf("invalid token")
+	if !exists {
+		fmt.Println(s.LoggedIn)
+		return fmt.Errorf("Token does not exist")
+	} else if existingToken != token {
+		return fmt.Errorf("Tokens do not match want: %v, got: %v", existingToken, token)
 	}
 	return nil
 }

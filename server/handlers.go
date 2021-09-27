@@ -15,15 +15,21 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		dec := json.NewDecoder(r.Body)
 		var req ListPeopleRequest
 		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Invalid request: %v\n", err)
 			w.WriteHeader(401)
 			return
 		}
-		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
-			w.WriteHeader(401)
-			return
-		}
+		/*
+			    // TODO why is validating tokens not working?
+					if err := s.ValidateLoginToken(req.LoginToken); err != nil {
+						fmt.Printf("Invalid login token: %v\n", err)
+						w.WriteHeader(401)
+						return
+					}
+		*/
 		user, exists := s.UserFor(req.LoginToken)
 		if !exists {
+			fmt.Println("User does not exist")
 			w.WriteHeader(401)
 			return
 		}
@@ -31,40 +37,38 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		var resp ListPeopleResponse
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		var cond func(*User) bool
 		switch req.Kind {
 		case All:
-			for _, person := range s.Users {
-				resp.People = append(resp.People, *person)
-				amt -= 1
-				if amt == 0 {
-					break
-				}
-			}
+			cond = func(u *User) bool { return true }
 		case OnlyFriends:
-			for _, person := range s.Users {
-				if _, exists := s.Friends[user.Uuid]; !exists {
-					continue
-				}
-				resp.People = append(resp.People, *person)
-				amt -= 1
-				if amt == 0 {
-					break
-				}
+			cond = func(u *User) bool {
+				_, exists := s.Friends[user.Uuid][u.Uuid]
+				return exists
 			}
 		case NotFriends:
-			for _, person := range s.Users {
-				if _, exists := s.Friends[user.Uuid]; exists {
-					continue
-				}
-				resp.People = append(resp.People, *person)
-				amt -= 1
-				if amt == 0 {
-					break
-				}
+			cond = func(u *User) bool {
+				_, exists := s.Friends[user.Uuid][u.Uuid]
+				return !exists
 			}
 		default:
 			w.WriteHeader(404)
 			return
+		}
+		// TODO this is inefficient since we explicitly iterate over everyone.
+		// Probably need to fix later when actually using a database.
+		for _, person := range s.Users {
+			if person.Uuid == user.Uuid {
+				continue
+			}
+			if !cond(person) {
+				continue
+			}
+			resp.People = append(resp.People, *person)
+			amt -= 1
+			if amt == 0 {
+				break
+			}
 		}
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)

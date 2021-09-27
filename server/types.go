@@ -72,11 +72,13 @@ type MessageReply struct {
 	OriginalContent EmojiContent `json:"originalContent"`
 	Reply           rune         `json:"reply"`
 	From            User         `json:"from"`
-	SentAt          time.Time    `json:"sentAt"`
+	// Unix timestamp
+	SentAt int64 `json:"sentAt"`
 }
 
 type LoginToken struct {
-	ValidUntil time.Time `json:"validUntil"`
+	// Unix Timestamp
+	ValidUntil int64 `json:"validUntil"`
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
 	Uuid Uuid `json:"uuid"`

@@ -13,6 +13,7 @@ type mojiClient struct {
 	httpc *http.Client
 	// loginToken will not be zero when the client has logged in
 	loginToken LoginToken
+	user       User
 	dst        string
 }
 
@@ -34,14 +35,40 @@ func (mc *mojiClient) SignUp(name, email string) error {
 	if err != nil {
 		return err
 	}
-	// TODO check response
+	fmt.Println(resp.Status)
 	dec := json.NewDecoder(resp.Body)
-	var loginToken LoginToken
-	if err := dec.Decode(&loginToken); err != nil {
+	var login LoginResponse
+	if err := dec.Decode(&login); err != nil {
 		return err
 	}
-	mc.loginToken = loginToken
+	mc.loginToken = login.LoginToken
+	mc.user = login.User
+	return nil
+}
+
+func (mc *mojiClient) UserID() Uuid {
+	return mc.user.Uuid
+}
+
+func (mc *mojiClient) ListPeople() error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	req := ListPeopleRequest{LoginToken: mc.loginToken, Amount: 50, Kind: 0}
+	if err := enc.Encode(req); err != nil {
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/people/", "application/json", &buf)
+	if err != nil {
+		return err
+	}
+	// TODO check response
+	dec := json.NewDecoder(resp.Body)
+	var listResp ListPeopleResponse
+	if err := dec.Decode(&listResp); err != nil {
+		return err
+	}
 	fmt.Println(resp.Status)
+	fmt.Println(listResp)
 	return nil
 }
 

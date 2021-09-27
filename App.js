@@ -5,35 +5,93 @@ import EmojiBoard from 'react-native-emoji-board';
 import { views } from './constants'
 import { styles } from './styles';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const serverURL = "https://api-3moji.herokuapp.com/";
+const loginTokenKey = "@3moji-login-token";
 
-const displayEmoji = (emojis) =>{
-  const dashs = ['-','-','-']
+const displayEmoji = emojis => {
+  const dashs = ['-','-','-'];
   return emojis + dashs.slice(emojis.length).join(" ");
+};
+
+const saveLoginToken = async (token) => {
+  try {
+    if (!token) return await AsyncStorage.removeItem(loginTokenKey);
+    await AsyncStorage.setItem(loginTokenKey, JSON.stringify(token));
+  } catch (e) {
+    // saving error
+    console.log("failed", e)
+  }
+};
+
+const friendActions = {
+  onlyFriends: 0,
+  all: 1,
+  notFriends: 2,
+};
+// common HTTP headers.
+const headers = {
+  Accept: 'application/json', 'Content-Type': 'application/json'
+};
+
+const getPeople = async (loginToken, amount=50, kind=friendActions.onlyFriends) => {
+    const body = { kind, amount, loginToken };
+    const resp = await fetch(serverURL + "api/v1/people/", {
+      method: 'POST', headers,
+      body: JSON.stringify(body),
+    });
+    if (resp.status != 200) {
+      console.log(resp.status);
+    };
+    return resp.json();
+};
+
+const loadLoginToken = async () => {
+  try {
+    const loginToken = await AsyncStorage.getItem(loginTokenKey);
+    if (loginToken == null) return null;
+    const token = JSON.parse(loginToken);
+    // TODO validate token still valid here.
+    return token;
+  } catch (e) {
+    // retrieving error
+    console.log("failed", e)
+  }
 }
 
-const MainApp = () =>{
-  const [currentView,setCurrentView] = useState(views.Splash);
-
+const MainApp = () => {
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
   const [show, setShow] = useState(false);
-  
+
   const [password, setPassword] = useState("");
   const [users, setUsers] = useState([]);
-  // TODO actually fetch users
+  const [loginToken, setLoginToken] = useState(null);
+  const [currentView,setCurrentView] = useState(views.Splash);
+
   useEffect(() => {
-    setUsers([
-      {name: "juju", email: "jknodt@princeton.edu",},
-      {name:'YX',email:"yx.edu"},
-      {name:'Chen',email:'qc.edu'}
-    ])
-  },[]);
-  
+    loadLoginToken().then(token => {
+      if (token == null) return
+      setLoginToken(token);
+      setCurrentView(views.Home);
+    });
+  }, []);
+
+  const updateFriendsAndInvites = async () => {
+    const friends = await getPeople(loginToken);
+    console.log(friends);
+  };
+
+  // when a login token is acquired, will reload friends list and get current invitations.
+  useEffect(() => {
+    if (loginToken == null) return;
+    updateFriendsAndInvites();
+  }, [loginToken]);
+
   // TODO fetch friends and invites
   const gotoView = (view) => {
     setStack([...stack,currentView]);
@@ -48,6 +106,13 @@ const MainApp = () =>{
     const prev = stack.pop();
     if (prev!=undefined) setCurrentView(prev);
   }
+  const successEntry = respJSON => {
+    saveLoginToken(respJSON.loginToken);
+    setLoginToken(respJSON.loginToken);
+    setUser(respJSON.user);
+
+    gotoView(views.Home)
+  };
 
   const login = async (email, password) => {
     const digest = await Crypto.digestStringAsync(
@@ -56,51 +121,31 @@ const MainApp = () =>{
     );
     const resp = await fetch(serverURL + "api/v1/login/", {
       method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email,
-          hashedPassword: digest,
-        }),
+      headers,
+      body: JSON.stringify({
+        email,
+        hashedPassword: digest,
+      }),
     });
-    console.log(resp.status);
-    const resp_json = await resp.json();
-    console.log(resp_json);
-
-    const tempUser = {
-      name: "juju",
-      email: "jknodt@princeton.edu",
-    }
-    setUser(tempUser);
-    setFriends([{name:'YX',email:"yx.edu"},{name:'Chen',email:'qc.edu'}]);
-    setInvites([{from:{name:'YX',email:"yx.edu"},emojis:"🍫🍦🍰"},
-                            {from:{name:'Chen',email:'qc.edu'},emojis:"🍣🍜🍛"}]);
-    gotoView(views.Home)
+    if (resp.status !== 200) {
+      console.log(resp.status);
+    } else successEntry(await resp.json());
   }
   const signup = async (name, email, password) =>{
     const digest = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       password,
     );
+    console.log(name, email, digest);
     const dst = serverURL + "api/v1/sign_up/";
-    console.log("here", dst)
     const resp = await fetch(dst, {
       method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email,
-          name,
-          hashedPassword: digest,
-        }),
+      headers,
+      body: JSON.stringify({ email, name, hashedPassword: digest }),
     });
-    console.log(resp.status);
-    const resp_json = await resp.json();
-    console.log(resp_json);
+    if (resp.status !== 200) {
+      console.log(resp.status);
+    } else successEntry(await resp.json());
   }
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
@@ -220,69 +265,89 @@ const MainApp = () =>{
     </View>
   };
 
-  const Home = () => {return <View style={styles.container}>
-    <View style={styles.button}>
-      <Button
-        title="✉️🥺❓"
-        onPress={() => gotoView(views.SendMsg)}
-      />
+  const Home = () => (
+    <View style={styles.container}>
+      <View style={styles.button}>
+        <Button
+          title="✉️🥺❓"
+          onPress={() => gotoView(views.SendMsg)}
+        />
 
+      </View>
+      <View style={styles.button}>
+        <Button
+          title="📫😆❗"
+          onPress={() => gotoView(views.RecvMsg)}
+        />
+      </View>
+      <View style={styles.button}>
+        <Button
+          title="➕😊🥰"
+          onPress={() => gotoView(views.AddFriend)}
+        />
+      </View>
+      <View style={styles.button}>
+        <Button title="Log out" color="#f194ff" onPress={() => {
+            saveLoginToken(null);
+            setLoginToken(null);
+            clearStack();
+            setCurrentView(views.Splash);
+          }
+        }/>
+      </View>
     </View>
-    <View style={styles.button}>
-      <Button
-        title="📫😆❗"
-        onPress={() => gotoView(views.RecvMsg)}
-      />
-    </View>
-    <View style={styles.button}>
-      <Button
-        title="➕😊🥰"
-        onPress={() => gotoView(views.AddFriend)}
-      />
-    </View>
-    <View style={styles.button}>
-      <Button title="Log out" color="#f194ff" onPress={() => {
-          clearStack();
-          setCurrentView(views.Splash)}
-        }
-      />
-    </View>
-  </View>};
+  );
 
   const SendMsg = () => {
     return <View style={styles.container}>
-    {/* <View style={styles.mainContent}> */}
-    {friends.map(friend => (
-      <>
-        <View style={styles.button}>
-          <Button
-            title={friend.name}
-            onPress={()=>{
-              setMessaging(friend);
-              gotoView(views.DraftMsg);
-          }}/>
-        </View>
+      {/* <View style={styles.mainContent}> */}
+      {friends.map(friend => (
+        <>
+          <View style={styles.button}>
+            <Button
+              title={friend.name}
+              onPress={()=>{
+                setMessaging(friend);
+                gotoView(views.DraftMsg);
+            }}/>
+          </View>
 
-      </>
-    ))}
-    {/* </View> */}
-    <View style={styles.button}>
-      <Button title="Back" color="#f194ff" onPress={back}/>
+        </>
+      ))}
+      {/* </View> */}
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
+      </View>
     </View>
-  </View>};
-  
+  };
 
-  const DraftMsg = () => { 
+  const sendEmoji = () => {
+    if (emojis.length != 6) {
+      setEmojiError("You need to send exactly three emojis");
+      return
+    }
+    const req = {
+      loginToken: loginToken,
+    }
+    fetch(serverURL + "api/v1/send_msg/", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        loginToken,
+        message: {
+          emojis: emojis,
+          source: user,
+          // TODO fill this in with the recipient.
+          recipients: [],
+          sentAt: Date.now(),
+        },
+      }),
+    });
+  }
+
+  const DraftMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
-  
-    const sendEmoji = (emojis,setEmojiError) => {
-      if(emojis.length == 6){
-        // TODO actually send it
-      }else{
-        setEmojiError("You need to send exactly three emojis");
-      }
-    }
 
     const onClick = emoji => {
       if (emojis.length >= 6){
@@ -382,4 +447,3 @@ const MainApp = () =>{
 }
 
 export default MainApp;
-
