@@ -53,13 +53,22 @@ type User struct {
 	// TODO add other preference fields here
 }
 
+type Group struct {
+	Uuid Uuid `json:"uuid"`
+	// Display Name, need not be unique
+	Name  string            `json:"name"`
+	Users map[Uuid]struct{} `json:"users"`
+	// TODO should this have a location attached as well?
+}
+
 // Message is a struct that represents an emoji message between two people
 type Message struct {
-	Uuid       Uuid         `json:"uuid"`
-	Emojis     EmojiContent `json:"emojis"`
-	Source     User         `json:"source"`
-	Recipients []Uuid       `json:"recipients"`
-	SentAt     time.Time    `json:"sentAt"`
+	// Messages Uuid
+	Uuid     Uuid         `json:"uuid"`
+	Emojis   EmojiContent `json:"emojis"`
+	Source   User         `json:"source"`
+	Location string       `json:"location"`
+	SentAt   time.Time    `json:"sentAt"`
 }
 
 func (m *Message) Expired(now time.Time) bool {

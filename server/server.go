@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"net/http"
 	"os"
@@ -42,6 +43,9 @@ type Server struct {
 	Friends       map[Uuid]map[Uuid]struct{}
 	MutualFriends map[Uuid]map[Uuid]struct{}
 
+	Groups        map[Uuid]Group
+	UsersToGroups map[Uuid]map[Uuid]struct{}
+
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]MessageReply
@@ -55,6 +59,9 @@ func NewServer() *Server {
 
 		UserToMessages: map[Uuid][]Uuid{},
 		Messages:       map[Uuid]Message{},
+
+		Groups:        map[Uuid]Group{},
+		UsersToGroups: map[Uuid]map[Uuid]struct{}{},
 
 		Users:   map[Uuid]*User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
@@ -73,6 +80,9 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
+	mux.HandleFunc("/api/v1/groups/", srv.GroupHandler())
+
+	mux.Handle("/debug/vars", expvar.Handler())
 
 	s := http.Server{
 		Addr:           addr,
@@ -298,36 +308,47 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			w.WriteHeader(400)
 			return
 		}
-		var smp SendMessageRequest
+		var req SendMessageRequest
 		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&smp); err != nil {
+		if err := dec.Decode(&req); err != nil {
 			fmt.Printf("Error decoding send message %v", err)
 			w.WriteHeader(401)
 			return
 		}
-		if err := s.ValidateLoginToken(smp.LoginToken); err != nil {
+		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
 			w.WriteHeader(401)
 			return
 		}
 
 		// save message for all users
 		// TODO delete old messages as well
-		msg := smp.Message
+		msg := req.Message
 		var err error
 		if msg.Uuid, err = generateUuid(); err != nil {
 			w.WriteHeader(500)
 			return
 		}
-		for _, recipUuid := range msg.Recipients {
-			s.UserToMessages[recipUuid] = append(s.UserToMessages[recipUuid], msg.Uuid)
-		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
 		s.Messages[msg.Uuid] = msg
+		switch req.RecipientKind {
+		case MsgGroup:
+			group := s.Groups[req.To]
+			for userUuid := range group.Users {
+				s.UserToMessages[userUuid] = append(s.UserToMessages[userUuid], msg.Uuid)
+			}
+		case MsgFriend:
+			s.UserToMessages[req.To] = append(s.UserToMessages[req.To], msg.Uuid)
+		}
 
 		w.WriteHeader(200)
 		return
 	}
 }
 
+// Checks that a login token is correct, and matches the currently existing token kept on the
+// token.
 func (s *Server) ValidateLoginToken(token LoginToken) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -341,6 +362,8 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 	return nil
 }
 
+// Given a login token, it will return the user who used that login token. mu should not be
+// held.
 func (s *Server) UserFor(token LoginToken) (*User, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

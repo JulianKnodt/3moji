@@ -71,8 +71,41 @@ type LoginResponse struct {
 	LoginToken LoginToken `json:"loginToken"`
 }
 
+type MessageRecipientKind int
+
+const (
+	MsgGroup MessageRecipientKind = iota
+	MsgFriend
+)
+
 type SendMessageRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
+
 	// The uuid for the message is generated on the server side
 	Message Message `json:"message"`
+
+	// Whether this is a message intended for a group or an individual
+	RecipientKind MessageRecipientKind `json:"recipientKind"`
+	// Uuid of group or individual being sent to
+	To Uuid `json:"to"`
+}
+
+type GroupOp int
+
+const (
+	JoinGroup GroupOp = iota
+	// When removing people from a group, if the group is empty it will be deleted.
+	LeaveGroup
+	CreateGroup
+)
+
+type GroupRequest struct {
+	Kind GroupOp `json:"kind"`
+	// GroupName is empty if not creating a group, but is only used for display and not
+	// identification for now.
+	GroupName string `json:"groupName"`
+	GroupUuid Uuid   `json:"groupUuid"`
+
+	// User's login token
+	LoginToken LoginToken `json:"loginToken"`
 }

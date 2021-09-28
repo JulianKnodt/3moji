@@ -124,3 +124,69 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		return
 	}
 }
+
+func (s *Server) GroupHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			return
+		}
+		var req GroupRequest
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Error decoding recv message %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		token := req.LoginToken
+		if err := s.ValidateLoginToken(token); err != nil {
+			w.WriteHeader(401)
+			return
+		}
+		user, exists := s.UserFor(token)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		switch req.Kind {
+		case JoinGroup:
+			if _, exists := s.Groups[req.GroupUuid]; !exists {
+				w.WriteHeader(404)
+				fmt.Fprint(w, "No Such group")
+				return
+			}
+			s.Groups[req.GroupUuid].Users[user.Uuid] = struct{}{}
+			s.UsersToGroups[user.Uuid][req.GroupUuid] = struct{}{}
+		case LeaveGroup:
+			// even in the case the group doesn't exist it's fine? maybe still check anyway
+			delete(s.Groups[req.GroupUuid].Users, user.Uuid)
+			delete(s.UsersToGroups[user.Uuid], req.GroupUuid)
+			// TODO check if group is empty then delete it if so
+		case CreateGroup:
+			if len(req.GroupName) < 3 {
+				w.WriteHeader(401)
+				fmt.Fprint(w, "Must specify at least 3 characters for group name")
+				return
+			}
+			uuid, err := generateUuid()
+			if err != nil {
+				w.WriteHeader(500)
+				return
+			}
+			group := Group{
+				Uuid: uuid,
+				Name: req.GroupName,
+				Users: map[Uuid]struct{}{
+					user.Uuid: struct{}{},
+				},
+			}
+			s.Groups[uuid] = group
+			s.UsersToGroups[user.Uuid][uuid] = struct{}{}
+		}
+
+		w.WriteHeader(200)
+		return
+	}
+}
