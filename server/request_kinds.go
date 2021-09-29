@@ -111,18 +111,18 @@ type GroupRequest struct {
 }
 
 // TODO also add a list groups operation
-type ListGroupOp int
+type ListGroupKind int
 
 const (
-	AllGroups ListGroupOp = iota
+	AllGroups ListGroupKind = iota
 	JoinedGroups
 	NotJoinedGroups
 )
 
 type ListGroupRequest struct {
-	Kind       ListGroupOp `json:"kind"`
-	Amount     int         `json:"amount"`
-	LoginToken LoginToken  `json:"loginToken"`
+	Kind       ListGroupKind `json:"kind"`
+	Amount     int           `json:"amount"`
+	LoginToken LoginToken    `json:"loginToken"`
 }
 
 type ListGroupResponse struct {

@@ -10,23 +10,21 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(404)
+			fmt.Fprintf(w, "Not a post request: %v", r.Method)
 			return
 		}
 		dec := json.NewDecoder(r.Body)
 		var req ListPeopleRequest
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Invalid request: %v\n", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Malformed request: %v", err)
 			return
 		}
-		/*
-			    // TODO why is validating tokens not working?
-					if err := s.ValidateLoginToken(req.LoginToken); err != nil {
-						fmt.Printf("Invalid login token: %v\n", err)
-						w.WriteHeader(401)
-						return
-					}
-		*/
+		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Invalid login token: %v", err)
+			return
+		}
 		user, exists := s.UserFor(req.LoginToken)
 		if !exists {
 			fmt.Println("User does not exist")
@@ -53,6 +51,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			}
 		default:
 			w.WriteHeader(404)
+			fmt.Fprintf(w, "Unexpected list kind: %v", req.Kind)
 			return
 		}
 		// TODO this is inefficient since we explicitly iterate over everyone.

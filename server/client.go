@@ -72,7 +72,7 @@ func (mc *mojiClient) ListPeople() error {
 	return nil
 }
 
-func (mc *mojiClient) ListGroups(op ListGroupOp) error {
+func (mc *mojiClient) ListGroups(op ListGroupKind) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	req := ListGroupRequest{LoginToken: mc.loginToken, Amount: 50, Kind: op}

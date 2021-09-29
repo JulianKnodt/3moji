@@ -68,11 +68,13 @@ type Message struct {
 	Emojis   EmojiContent `json:"emojis"`
 	Source   User         `json:"source"`
 	Location string       `json:"location"`
-	SentAt   time.Time    `json:"sentAt"`
+	// Unix timestamp for current time.
+	SentAt int64 `json:"sentAt"`
 }
 
 func (m *Message) Expired(now time.Time) bool {
-	return m.SentAt.Add(time.Hour).Before(now)
+	t := time.Unix(m.SentAt, 0)
+	return t.Add(time.Hour).Before(now)
 }
 
 type MessageReply struct {

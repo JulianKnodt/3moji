@@ -5,10 +5,14 @@ import EmojiBoard from 'react-native-emoji-board';
 import { views } from './constants'
 import { styles } from './styles';
 import * as Crypto from 'expo-crypto';
+import * as Queries from "./queries";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const serverURL = "https://api-3moji.herokuapp.com/";
 const loginTokenKey = "@3moji-login-token";
+const headers = {
+  Accept: 'application/json', 'Content-Type': 'application/json',
+};
 
 const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
@@ -23,28 +27,6 @@ const saveLoginToken = async (token) => {
     // saving error
     console.log("failed", e)
   }
-};
-
-const friendActions = {
-  onlyFriends: 0,
-  all: 1,
-  notFriends: 2,
-};
-// common HTTP headers.
-const headers = {
-  Accept: 'application/json', 'Content-Type': 'application/json'
-};
-
-const getPeople = async (loginToken, amount=50, kind=friendActions.onlyFriends) => {
-    const body = { kind, amount, loginToken };
-    const resp = await fetch(serverURL + "api/v1/people/", {
-      method: 'POST', headers,
-      body: JSON.stringify(body),
-    });
-    if (resp.status != 200) {
-      console.log(resp.status);
-    };
-    return resp.json();
 };
 
 const loadLoginToken = async () => {
@@ -82,8 +64,10 @@ const MainApp = () => {
   }, []);
 
   const updateFriendsAndInvites = async () => {
-    const friends = await getPeople(loginToken);
-    console.log(friends);
+    const friends = await Queries.getPeople(loginToken);
+    if (friends instanceof Queries.Error) {
+      console.log(friends.msg);
+    } else console.log(friends);
   };
 
   // when a login token is acquired, will reload friends list and get current invitations.
