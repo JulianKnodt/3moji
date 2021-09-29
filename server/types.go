@@ -70,6 +70,9 @@ type Message struct {
 	Location string       `json:"location"`
 	// Unix timestamp for current time.
 	SentAt int64 `json:"sentAt"`
+
+	// 0-24 for the hour the message is sent at.
+	LocalHour float64
 }
 
 func (m *Message) Expired(now time.Time) bool {

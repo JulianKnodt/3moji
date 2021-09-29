@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"sync"
@@ -49,6 +50,9 @@ type Server struct {
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]MessageReply
+
+	EmojiSendCounts *expvar.Map
+	EmojiSendHours  *expvar.Map
 }
 
 func NewServer() *Server {
@@ -68,6 +72,9 @@ func NewServer() *Server {
 
 		UserToReplies: map[Uuid][]Uuid{},
 		Replies:       map[Uuid]MessageReply{},
+
+		EmojiSendCounts: expvar.NewMap("EmojiSendCounts"),
+		EmojiSendHours:  expvar.NewMap("EmojiSendLocalHour"),
 	}
 }
 
@@ -83,6 +90,7 @@ func (srv *Server) Serve(addr string) error {
 
 	mux.HandleFunc("/api/v1/list_friends/", srv.ListPeopleHandler())
 	mux.HandleFunc("/api/v1/list_groups/", srv.ListGroupHandler())
+	mux.HandleFunc("/api/v1/recs/", srv.RecommendationHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
@@ -443,4 +451,39 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 		}
 		return
 	}
+}
+
+// time is 0 -> 24, returns two values which represents modular clock position
+func to2DTimeModular(t float64) (float64, float64) {
+	adj := t * math.Pi / 12.0
+	return math.Sincos(adj)
+}
+
+func from2DTimeModular(u, v float64) float64 {
+	// normalize u and v
+	dist := math.Sqrt(u*u + v*v)
+	if math.Abs(dist) < 1e-5 {
+		dist = 1e-5
+	}
+	return 12 / math.Pi * math.Asin(u/dist)
+}
+
+func weightedAverage(old, newVal, alpha float64) float64 {
+	return old*(1-alpha) + newVal*alpha
+}
+
+func (s *Server) LogEmojiContent(e EmojiContent, localHour float64) {
+	// increment count
+	emojiString := string(e[:])
+	s.EmojiSendCounts.Add(emojiString, 1)
+
+	oldValX := s.EmojiSendHours.Get(emojiString + "x").(*expvar.Float)
+	oldValY := s.EmojiSendHours.Get(emojiString + "y").(*expvar.Float)
+	newX, newY := to2DTimeModular(localHour)
+	u := weightedAverage(oldValX.Value(), newX, 0.01)
+	v := weightedAverage(oldValY.Value(), newY, 0.01)
+	oldValX.Set(u)
+	oldValY.Set(v)
+
+	s.EmojiSendHours.Get(emojiString).(*expvar.Float).Set(from2DTimeModular(u, v))
 }

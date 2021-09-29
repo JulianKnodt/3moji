@@ -265,3 +265,44 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		return
 	}
 }
+
+func (s *Server) RecommendationHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(404)
+			return
+		}
+		dec := json.NewDecoder(r.Body)
+		var req RecommendationRequest
+		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Invalid request: %v\n", err)
+			w.WriteHeader(401)
+			return
+		}
+		// TODO recommendations should query a data structure which specifies user usage at a given
+		// hour.
+		var resp RecommendationResponse
+		switch req.LocalHour {
+		case 7, 8, 9:
+			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+				{'🥞', '🍳', '🥓'},
+				{'🫖', '🍵', '🌅'},
+				{'🏃', '🌄', '🚲'},
+				{'💪', '🤸', '💪'},
+			}...)
+		case 12, 13:
+			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+				{'🍕', '🍔', '🌯'},
+				{'🥗', '🥙', '🍲'},
+				{'🍱', '🍚', '🍛'},
+			}...)
+		case 21, 22:
+			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+				{'🍷', '🎉', '🍹'},
+			}...)
+		}
+		enc := json.NewEncoder(w)
+		enc.Encode(resp)
+		return
+	}
+}

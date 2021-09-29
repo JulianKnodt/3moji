@@ -128,3 +128,12 @@ type ListGroupRequest struct {
 type ListGroupResponse struct {
 	Groups []Group `json:"groups"`
 }
+
+type RecommendationRequest struct {
+	LocalHour uint8
+	// TODO add more features here
+}
+
+type RecommendationResponse struct {
+	Recommendations []EmojiContent
+}
