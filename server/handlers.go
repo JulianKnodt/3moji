@@ -160,10 +160,16 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			s.Groups[req.GroupUuid].Users[user.Uuid] = struct{}{}
 			s.UsersToGroups[user.Uuid][req.GroupUuid] = struct{}{}
 		case LeaveGroup:
-			// even in the case the group doesn't exist it's fine? maybe still check anyway
+			if _, exists := s.Groups[req.GroupUuid]; !exists {
+				w.WriteHeader(404)
+				fmt.Fprint(w, "No Such group")
+				return
+			}
 			delete(s.Groups[req.GroupUuid].Users, user.Uuid)
 			delete(s.UsersToGroups[user.Uuid], req.GroupUuid)
-			// TODO check if group is empty then delete it if so
+			if len(s.Groups[req.GroupUuid].Users) == 0 {
+				delete(s.Groups, req.GroupUuid)
+			}
 		case CreateGroup:
 			if len(req.GroupName) < 3 {
 				w.WriteHeader(401)
@@ -183,10 +189,80 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				},
 			}
 			s.Groups[uuid] = group
+			if s.UsersToGroups[user.Uuid] == nil {
+				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
+			}
 			s.UsersToGroups[user.Uuid][uuid] = struct{}{}
 		}
 
 		w.WriteHeader(200)
+		return
+	}
+}
+
+func (s *Server) ListGroupHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(404)
+			return
+		}
+		dec := json.NewDecoder(r.Body)
+		var req ListGroupRequest
+		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Invalid request: %v\n", err)
+			w.WriteHeader(401)
+			return
+		}
+		/*
+			    // TODO why is validating tokens not working?
+					if err := s.ValidateLoginToken(req.LoginToken); err != nil {
+						fmt.Printf("Invalid login token: %v\n", err)
+						w.WriteHeader(401)
+						return
+					}
+		*/
+		user, exists := s.UserFor(req.LoginToken)
+		if !exists {
+			fmt.Println("User does not exist")
+			w.WriteHeader(401)
+			return
+		}
+		amt := req.Amount
+		var resp ListGroupResponse
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		var cond func(Group) bool
+		switch req.Kind {
+		case AllGroups:
+			cond = func(Group) bool { return true }
+		case JoinedGroups:
+			cond = func(g Group) bool {
+				_, exists := s.UsersToGroups[user.Uuid][g.Uuid]
+				return exists
+			}
+		case NotJoinedGroups:
+			cond = func(g Group) bool {
+				_, exists := s.UsersToGroups[user.Uuid][g.Uuid]
+				return !exists
+			}
+		default:
+			w.WriteHeader(404)
+			return
+		}
+		// TODO this is inefficient since we explicitly iterate over everyone.
+		// Probably need to fix later when actually using a database.
+		for _, group := range s.Groups {
+			if !cond(group) {
+				continue
+			}
+			resp.Groups = append(resp.Groups, group)
+			amt -= 1
+			if amt == 0 {
+				break
+			}
+		}
+		enc := json.NewEncoder(w)
+		enc.Encode(resp)
 		return
 	}
 }

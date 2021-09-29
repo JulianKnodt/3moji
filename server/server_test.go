@@ -45,6 +45,14 @@ func TestListPeople(t *testing.T) {
 	}
 
 	if err := mc.ListPeople(); err != nil {
-		t.Fatalf("Failed to list people:  %v", err)
+		t.Fatalf("Failed to list people: %v", err)
+	}
+
+	if err := mc.GroupOp("example_group", 0, CreateGroup); err != nil {
+		t.Fatalf("Failed to create group:  %v", err)
+	}
+
+	if err := mc2.ListGroups(AllGroups); err != nil {
+		t.Fatalf("Failed to list groups:  %v", err)
 	}
 }

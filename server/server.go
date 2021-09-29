@@ -77,10 +77,12 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/login/", srv.LoginHandler())
 
 	mux.HandleFunc("/api/v1/friend/", srv.FriendHandler())
+	mux.HandleFunc("/api/v1/groups/", srv.GroupHandler())
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
-	mux.HandleFunc("/api/v1/people/", srv.ListPeopleHandler())
-	mux.HandleFunc("/api/v1/groups/", srv.GroupHandler())
+
+	mux.HandleFunc("/api/v1/list_friends/", srv.ListPeopleHandler())
+	mux.HandleFunc("/api/v1/list_groups/", srv.ListGroupHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
 

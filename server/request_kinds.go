@@ -109,3 +109,22 @@ type GroupRequest struct {
 	// User's login token
 	LoginToken LoginToken `json:"loginToken"`
 }
+
+// TODO also add a list groups operation
+type ListGroupOp int
+
+const (
+	AllGroups ListGroupOp = iota
+	JoinedGroups
+	NotJoinedGroups
+)
+
+type ListGroupRequest struct {
+	Kind       ListGroupOp `json:"kind"`
+	Amount     int         `json:"amount"`
+	LoginToken LoginToken  `json:"loginToken"`
+}
+
+type ListGroupResponse struct {
+	Groups []Group `json:"groups"`
+}

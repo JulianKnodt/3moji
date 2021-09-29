@@ -57,13 +57,35 @@ func (mc *mojiClient) ListPeople() error {
 	if err := enc.Encode(req); err != nil {
 		return err
 	}
-	resp, err := mc.httpc.Post(mc.dst+"/api/v1/people/", "application/json", &buf)
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/list_friends/", "application/json", &buf)
 	if err != nil {
 		return err
 	}
 	// TODO check response
 	dec := json.NewDecoder(resp.Body)
 	var listResp ListPeopleResponse
+	if err := dec.Decode(&listResp); err != nil {
+		return err
+	}
+	fmt.Println(resp.Status)
+	fmt.Println(listResp)
+	return nil
+}
+
+func (mc *mojiClient) ListGroups(op ListGroupOp) error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	req := ListGroupRequest{LoginToken: mc.loginToken, Amount: 50, Kind: op}
+	if err := enc.Encode(req); err != nil {
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/list_groups/", "application/json", &buf)
+	if err != nil {
+		return err
+	}
+	// TODO check response
+	dec := json.NewDecoder(resp.Body)
+	var listResp ListGroupResponse
 	if err := dec.Decode(&listResp); err != nil {
 		return err
 	}
@@ -102,6 +124,23 @@ func (mc *mojiClient) FriendOp(to Uuid, op FriendAction) error {
 		return err
 	}
 	resp, err := mc.httpc.Post(mc.dst+"/api/v1/friend/", "application/json", &buf)
+	if err != nil {
+		return err
+	}
+	fmt.Println(resp.Status)
+	return nil
+}
+
+func (mc *mojiClient) GroupOp(name string, groupUuid Uuid, op GroupOp) error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	payload := GroupRequest{
+		Kind: op, GroupName: name, GroupUuid: groupUuid, LoginToken: mc.loginToken,
+	}
+	if err := enc.Encode(payload); err != nil {
+		return err
+	}
+	resp, err := mc.httpc.Post(mc.dst+"/api/v1/groups/", "application/json", &buf)
 	if err != nil {
 		return err
 	}
