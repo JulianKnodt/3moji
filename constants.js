@@ -6,6 +6,8 @@ export const views = {
   SendMsg: "SendMsg",
   RecvMsg: "RecvMsg",
   DraftMsg: "DraftMsg",
-  AddFriend: "AddFriend"
+  AddFriend: "AddFriend",
+  AddGroup: "AddGroup",
+  CreateGroup: "CreateGroup",
 };
 

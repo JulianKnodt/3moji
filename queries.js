@@ -52,11 +52,12 @@ export const leaveGroup = async (loginToken, groupUuid) =>
   groupOp(loginToken, "", groupUuid, groupOpKind.leaveGroup);
 
 export const createGroup = async (loginToken, groupName) =>
-  groupOp(loginToken, groupName, 0, groupOpKind.leaveGroup);
+  groupOp(loginToken, groupName, 0, groupOpKind.createGroup);
 
 const groupOp = async (
   loginToken, groupName="", groupUuid=0, kind=groupOpKind.joinGroup,
 ) => {
+  console.log(groupName,groupUuid);
   if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup) {
     // requires a groupUuid
     if (!groupUuid) return null;
@@ -68,7 +69,7 @@ const groupOp = async (
   const resp = await fetch(serverURL + "api/v1/groups/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
-  return handleResp(resp);
+  return handleResp(resp,true);
 };
 
 export const sendMsg = async (loginToken, message, dstUuid, toGroup=true) => {
@@ -83,9 +84,12 @@ export const sendMsg = async (loginToken, message, dstUuid, toGroup=true) => {
 
 // current generic way to handle responses, returning null if there's an error which may be
 // turned into an alert.
-const handleResp = async resp => {
+const handleResp = async (resp,ignoreResp = false) => {
   if (resp.status != 200) {
     return new Error(resp.status, await resp.text());
+  }
+  if(ignoreResp){
+    return null;
   }
   return resp.json();
 };

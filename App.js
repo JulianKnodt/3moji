@@ -45,6 +45,7 @@ const loadLoginToken = async () => {
 const MainApp = () => {
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
@@ -64,16 +65,31 @@ const MainApp = () => {
   }, []);
 
   const updateFriendsAndInvites = async () => {
-    const friends = await Queries.getPeople(loginToken);
+    const friends = await Queries.getPeople(loginToken,50,Queries.listPeopleKind.all);
     if (friends instanceof Queries.Error) {
       console.log(friends.msg);
-    } else console.log(friends);
+    } else{
+      console.log(friends);
+      setFriends(friends);
+    }
   };
+
+  const getGroups = async () => {
+    const group = await Queries.getGroups(loginToken);
+    if(group == null){
+      setGroups([]);
+    }else{
+      setGroups(group.groups);
+    }
+    // console.log("logging",group);
+    // console.log(loginToken)
+  }
 
   // when a login token is acquired, will reload friends list and get current invitations.
   useEffect(() => {
     if (loginToken == null) return;
     updateFriendsAndInvites();
+    getGroups();
   }, [loginToken]);
 
   // TODO fetch friends and invites
@@ -112,7 +128,8 @@ const MainApp = () => {
       }),
     });
     if (resp.status !== 200) {
-      console.log(resp.status);
+      // console.log(resp.status);
+      console.log(await resp.text());
     } else successEntry(await resp.json());
   }
   const signup = async (name, email, password) =>{
@@ -267,7 +284,7 @@ const MainApp = () => {
       <View style={styles.button}>
         <Button
           title="➕😊🥰"
-          onPress={() => gotoView(views.AddFriend)}
+          onPress={() => gotoView(views.AddGroup)}
         />
       </View>
       <View style={styles.button}>
@@ -283,20 +300,19 @@ const MainApp = () => {
   );
 
   const SendMsg = () => {
+    console.log(groups);
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
-      {friends.map(friend => (
-        <>
-          <View style={styles.button}>
-            <Button
-              title={friend.name}
-              onPress={()=>{
-                setMessaging(friend);
-                gotoView(views.DraftMsg);
-            }}/>
-          </View>
+      {groups.map(group => (
+        <View key={group.uuid} style={styles.button}>
+          <Button
+            title={group.name}
+            onPress={()=>{
+              setMessaging(group);
+              gotoView(views.DraftMsg);
+          }}/>
+        </View>
 
-        </>
       ))}
       {/* </View> */}
       <View style={styles.button}>
@@ -413,7 +429,38 @@ const MainApp = () => {
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
   </View>};
-
+  const AddGroup = () => {
+    console.log("add group",groups);
+    return <View style={styles.container}>
+      <View style={styles.button}>
+        <Button title="🆕😊🥰" onPress={()=>{gotoView(views.CreateGroup)}}/>
+      </View>
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
+      </View>
+    </View>
+  };
+  const CreateGroup = () => {
+    const [groupName,setGroupName] = useState("")
+    return <View style={styles.container}>
+      <Text>{"Please enter a group name:"}</Text>
+      <TextInput
+        style={styles.input}
+        autoCapitalize="none"
+        value={groupName}
+        onChangeText={setGroupName}
+      />
+      <View style={styles.button}>
+        <Button title="Create" onPress={async()=>{
+          await Queries.createGroup(loginToken,groupName);
+          back();
+        }}/>
+      </View>
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
+      </View>
+    </View>
+  };
   if (currentView == views.Splash){
     return <Splash />;
   } else if (currentView == views.SignUp){
@@ -426,6 +473,8 @@ const MainApp = () => {
   else if (currentView == views.RecvMsg) return <AckMsg />;
   else if (currentView == views.DraftMsg) return <DraftMsg />;
   else if (currentView == views.AddFriend) return <AddFriend />;
+  else if (currentView == views.AddGroup) return <AddGroup />;
+  else if (currentView == views.CreateGroup) return <CreateGroup />;
   else throw `Unknown view {currentView}`;
 
 }
