@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 )
 
@@ -283,11 +284,11 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 		// TODO recommendations should query a data structure which specifies user usage at a given
 		// hour.
 		var resp RecommendationResponse
-		switch req.LocalHour {
-		case 7, 8, 9:
+		switch int(math.Round(req.LocalTime)) % 24 {
+		case 6, 7, 8, 9:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
 				{'🥞', '🍳', '🥓'},
-				{'🫖', '🍵', '🌅'},
+				{'🫖', '🥐', '🌅'},
 				{'🏃', '🌄', '🚲'},
 				{'💪', '🤸', '💪'},
 			}...)
@@ -297,9 +298,15 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				{'🥗', '🥙', '🍲'},
 				{'🍱', '🍚', '🍛'},
 			}...)
+		case 16, 17:
+			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+				{'🏀', '🎾', '🏐'},
+				{'🎥', '🕴', '🎦'},
+			}...)
 		case 21, 22:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
 				{'🍷', '🎉', '🍹'},
+				{'🍰', '🍦', '🧋'},
 			}...)
 		}
 		enc := json.NewEncoder(w)

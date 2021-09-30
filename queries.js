@@ -82,6 +82,16 @@ export const sendMsg = async (loginToken, message, dstUuid, toGroup=true) => {
   return handleResp(resp);
 };
 
+export const recommendations = async () => {
+  const now = new Date();
+  const localTime = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+  const req = { localTime };
+  const resp = await fetch(serverURL + "api/v1/recs/", {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp);
+};
+
 // current generic way to handle responses, returning null if there's an error which may be
 // turned into an alert.
 const handleResp = async (resp,ignoreResp = false) => {

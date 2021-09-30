@@ -130,10 +130,10 @@ type ListGroupResponse struct {
 }
 
 type RecommendationRequest struct {
-	LocalHour uint8
+	LocalTime float64 `json:"localTime"`
 	// TODO add more features here
 }
 
 type RecommendationResponse struct {
-	Recommendations []EmojiContent
+	Recommendations []EmojiContent `json:"recommendations"`
 }
