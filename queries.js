@@ -4,8 +4,9 @@ const headers = {
 };
 
 export class Error {
-  constructor(msg="") {
-    this.msg = msg
+  constructor(status=400, msg="") {
+    this.status = status;
+    this.msg = msg;
   }
 }
 
@@ -44,7 +45,16 @@ export const groupOpKind = {
   createGroup: 2,
 };
 
-export const groupOp = async (
+export const joinGroup = async (loginToken, groupUuid) =>
+  groupOp(loginToken, "", groupUuid, groupOpKind.joinGroup);
+
+export const leaveGroup = async (loginToken, groupUuid) =>
+  groupOp(loginToken, "", groupUuid, groupOpKind.leaveGroup);
+
+export const createGroup = async (loginToken, groupName) =>
+  groupOp(loginToken, groupName, 0, groupOpKind.leaveGroup);
+
+const groupOp = async (
   loginToken, groupName="", groupUuid=0, kind=groupOpKind.joinGroup,
 ) => {
   if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup) {
@@ -55,7 +65,7 @@ export const groupOp = async (
     if (groupName.length == 0) return null;
   }
   const req = { loginToken, kind, groupName, groupUuid };
-  const resp = await fetch(serverURL + "api/v1/list_groups/", {
+  const resp = await fetch(serverURL + "api/v1/groups/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
   return handleResp(resp);
@@ -75,8 +85,7 @@ export const sendMsg = async (loginToken, message, dstUuid, toGroup=true) => {
 // turned into an alert.
 const handleResp = async resp => {
   if (resp.status != 200) {
-    console.log(resp.status);
-    return new Error(await resp.text());
+    return new Error(resp.status, await resp.text());
   }
   return resp.json();
 };
