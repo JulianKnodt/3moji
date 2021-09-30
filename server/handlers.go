@@ -27,8 +27,8 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		}
 		user, exists := s.UserFor(req.LoginToken)
 		if !exists {
-			fmt.Println("User does not exist")
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 		amt := req.Amount
@@ -208,8 +208,8 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		dec := json.NewDecoder(r.Body)
 		var req ListGroupRequest
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Invalid request: %v\n", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Invalid request: %v\n", err)
 			return
 		}
 		/*
@@ -222,8 +222,8 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		*/
 		user, exists := s.UserFor(req.LoginToken)
 		if !exists {
-			fmt.Println("User does not exist")
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 		amt := req.Amount
@@ -246,6 +246,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			}
 		default:
 			w.WriteHeader(404)
+			fmt.Fprint(w, "Invalid op kind")
 			return
 		}
 		// TODO this is inefficient since we explicitly iterate over everyone.

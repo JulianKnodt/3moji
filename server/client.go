@@ -90,7 +90,7 @@ func (mc *mojiClient) ListGroups(op ListGroupKind) error {
 		return err
 	}
 	fmt.Println(resp.Status)
-	fmt.Println(listResp)
+	fmt.Println("list groups", listResp)
 	return nil
 }
 
