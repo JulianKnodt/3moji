@@ -74,6 +74,7 @@ const MainApp = () => {
       // console.log(friends);
       setFriends(friends);
     }
+    setInvites([{name:"A group",message:"🥞🍳🥓"}]);
   };
 
   const getGroups = async () => {
@@ -406,15 +407,15 @@ const MainApp = () => {
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
   </View>};
-
   const AckMsg = () => {
+    console.log(invites);
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
-    {invites.map(invite=>(
-        <View  style={styles.inviteContainer}>
-          <Text style={styles.inviteText}>{invite.from.name}: {invite.emojis}?</Text>
+    {invites.map((invite,i)=>(
+        <View key={i} style={styles.inviteContainer}>
+          <Text style={styles.inviteText}>{invite.name}: {invite.message}?</Text>
           <View style={styles.reactContainer}>
             <View style={styles.inviteButton}>
               <Button title="👍" onPress={()=>{}}/>
