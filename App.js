@@ -46,6 +46,8 @@ const MainApp = () => {
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [joinedGroups, setJoinedGroups] = useState([]);
+  const [notJoinedGroups, setNotJoinedGroups] = useState([]);
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
@@ -67,22 +69,33 @@ const MainApp = () => {
   const updateFriendsAndInvites = async () => {
     const friends = await Queries.getPeople(loginToken,50,Queries.listPeopleKind.all);
     if (friends instanceof Queries.Error) {
-      console.log(friends.msg);
+      // console.log(friends.msg);
     } else{
-      console.log(friends);
+      // console.log(friends);
       setFriends(friends);
     }
   };
 
   const getGroups = async () => {
     const group = await Queries.getGroups(loginToken);
-    if(group == null){
+    // console.log(group);
+    if(group == null || group.groups == null){
       setGroups([]);
     }else{
       setGroups(group.groups);
     }
-    // console.log("logging",group);
-    // console.log(loginToken)
+    const joined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.joinedGroups);
+    if(joined == null || joined.groups == null){
+      setJoinedGroups([]);
+    }else{
+      setJoinedGroups(joined.groups);
+    }
+    const notJoined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.notJoinedGroups);
+    if(notJoined == null || notJoined.groups == null){
+      setNotJoinedGroups([]);
+    }else{
+      setNotJoinedGroups(notJoined.groups);
+    }
   }
 
   // when a login token is acquired, will reload friends list and get current invitations.
@@ -129,7 +142,7 @@ const MainApp = () => {
     });
     if (resp.status !== 200) {
       // console.log(resp.status);
-      console.log(await resp.text());
+      // console.log(await resp.text());
     } else successEntry(await resp.json());
   }
   const signup = async (name, email, password) =>{
@@ -137,7 +150,7 @@ const MainApp = () => {
       Crypto.CryptoDigestAlgorithm.SHA256,
       password,
     );
-    console.log(name, email, digest);
+    // console.log(name, email, digest);
     const dst = serverURL + "api/v1/sign_up/";
     const resp = await fetch(dst, {
       method: 'POST',
@@ -145,12 +158,12 @@ const MainApp = () => {
       body: JSON.stringify({ email, name, hashedPassword: digest }),
     });
     if (resp.status !== 200) {
-      console.log(resp.status);
+      // console.log(resp.status);
     } else successEntry(await resp.json());
   }
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
-      console.log(email)
+      // console.log(email)
       if (!email) return null
       if (email == "") return null;
       if (!email.endsWith("princeton.edu")) {
@@ -300,10 +313,9 @@ const MainApp = () => {
   );
 
   const SendMsg = () => {
-    console.log(groups);
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
-      {groups.map(group => (
+      {joinedGroups.map(group => (
         <View key={group.uuid} style={styles.button}>
           <Button
             title={group.name}
@@ -321,33 +333,38 @@ const MainApp = () => {
     </View>
   };
 
-  const sendEmoji = () => {
-    if (emojis.length != 6) {
-      setEmojiError("You need to send exactly three emojis");
-      return
-    }
-    const req = {
-      loginToken: loginToken,
-    }
-    fetch(serverURL + "api/v1/send_msg/", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        loginToken,
-        message: {
-          emojis: emojis,
-          source: user,
-          // TODO fill this in with the recipient.
-          recipients: [],
-          sentAt: Date.now(),
-        },
-      }),
-    });
-  }
+  
 
   const DraftMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
+
+    const sendEmoji = async() => {
+      if (emojis.length != 6) {
+        setEmojiError("You need to send exactly three emojis");
+        return;
+      }
+      console.log(messaging);
+      const resp = await Queries.sendMsg(loginToken,emojis,messaging.uuid);
+      console.log(resp);
+      // const req = {
+      //   loginToken: loginToken,
+      // }
+      // fetch(serverURL + "api/v1/send_msg/", {
+      //   method: "POST",
+      //   headers,
+      //   body: JSON.stringify({
+      //     loginToken,
+      //     message: {
+      //       emojis: emojis,
+      //       source: user,
+      //       // TODO fill this in with the recipient.
+      //       recipients: [],
+      //       sentAt: Date.now(),
+      //     },
+      //   }),
+      // });
+    }
 
     const onClick = emoji => {
       if (emojis.length >= 6){
@@ -362,7 +379,7 @@ const MainApp = () => {
       if(emojis.length > 0){
         setEmoji(emojis.substring(0, emojis.length - 2));
       }
-      if(emojis.length < 6){
+      if(emojis.length <= 6){
         setEmojiError("");
       }
     }
@@ -377,6 +394,13 @@ const MainApp = () => {
     {emojiError !== "" && <Text>{emojiError}</Text>}
     <View style={styles.button}>
       <Button title="Send" onPress={sendEmoji}/>
+    </View>
+    <View style={styles.button}>
+      <Button title="Leave Group" color="#b81010" onPress={async()=>{
+        await Queries.leaveGroup(loginToken,messaging.uuid);
+        getGroups();
+        gotoView(views.SendMsg);
+      }}/>
     </View>
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
@@ -430,8 +454,19 @@ const MainApp = () => {
     </View>
   </View>};
   const AddGroup = () => {
-    console.log("add group",groups);
+    // console.log(groups);
     return <View style={styles.container}>
+      {notJoinedGroups.map(group => (
+        <View key={group.uuid} style={styles.button}>
+          <Button
+            title={group.name}
+            onPress={()=>{
+              setMessaging(group);
+              gotoView(views.DraftMsg);
+          }}/>
+        </View>
+
+      ))}
       <View style={styles.button}>
         <Button title="🆕😊🥰" onPress={()=>{gotoView(views.CreateGroup)}}/>
       </View>
@@ -453,6 +488,7 @@ const MainApp = () => {
       <View style={styles.button}>
         <Button title="Create" onPress={async()=>{
           await Queries.createGroup(loginToken,groupName);
+          getGroups();
           back();
         }}/>
       </View>
