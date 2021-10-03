@@ -22,7 +22,7 @@ type AckMsgRequest struct {
 	// Msg being replied to
 	MsgID Uuid `json:"msgID"`
 	// Reply is a single emoji reply.
-	Reply rune `json:"reply"`
+	Reply EmojiReply `json:"reply"`
 	// LoginToken of the user
 	LoginToken LoginToken `json:"loginToken"`
 }

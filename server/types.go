@@ -30,7 +30,8 @@ func init() {
 }
 */
 
-type EmojiContent [3]rune
+type EmojiContent string
+type EmojiReply string
 
 type Email string
 
@@ -83,8 +84,9 @@ func (m *Message) Expired(now time.Time) bool {
 type MessageReply struct {
 	Message Uuid `json:"message"`
 
+	// This is so the user can see what they originally sent
 	OriginalContent EmojiContent `json:"originalContent"`
-	Reply           rune         `json:"reply"`
+	Reply           EmojiReply   `json:"reply"`
 	From            User         `json:"from"`
 	// Unix timestamp
 	SentAt int64 `json:"sentAt"`

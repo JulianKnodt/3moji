@@ -287,26 +287,26 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 		switch int(math.Round(req.LocalTime)) % 24 {
 		case 6, 7, 8, 9:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
-				{'🥞', '🍳', '🥓'},
-				{'🫖', '🥐', '🌅'},
-				{'🏃', '🌄', '🚲'},
-				{'💪', '🤸', '💪'},
+				"🥞🍳🥓",
+				"🫖'🥐🌅",
+				"🏃🌄🚲",
+				"💪🤸💪",
 			}...)
 		case 12, 13:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
-				{'🍕', '🍔', '🌯'},
-				{'🥗', '🥙', '🍲'},
-				{'🍱', '🍚', '🍛'},
+				"🍕🍔🌯",
+				"🥗🥙🍲",
+				"🍱🍚🍛",
 			}...)
 		case 16, 17:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
-				{'🏀', '🎾', '🏐'},
-				{'🎥', '🕴', '🎦'},
+				"🏀🎾🏐",
+				"🎥🕴🎦",
 			}...)
 		case 21, 22:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
-				{'🍷', '🎉', '🍹'},
-				{'🍰', '🍦', '🧋'},
+				"🍷🎉🍹",
+				"🍰🍦🧋'",
 			}...)
 		}
 		enc := json.NewEncoder(w)
