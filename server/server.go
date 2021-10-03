@@ -321,8 +321,8 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 		var req SendMessageRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Error decoding send message %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
 			return
 		}
 		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
