@@ -82,7 +82,7 @@ type SendMessageRequest struct {
 	LoginToken LoginToken `json:"loginToken"`
 
 	// The uuid for the message is generated on the server side
-	Message Message `json:"message"`
+	Message Message `json:"message,string"`
 
 	// Whether this is a message intended for a group or an individual
 	RecipientKind MessageRecipientKind `json:"recipientKind"`

@@ -72,14 +72,23 @@ const groupOp = async (
   return handleResp(resp,true);
 };
 
-export const sendMsg = async (loginToken, message, dstUuid, toGroup=true) => {
+export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
   recipientKind = toGroup ? 0 : 1;
   // TODO message is not just a string but a complex object.
+  const message = {
+    "uuid": loginToken.uuid,
+    "emojis":"",//emojis,
+    "source":  {"uuid":loginToken.uuid,"name":"","email":loginToken.userEmail},
+    "location": "",
+    "sentAt": 0,
+    "localHour": 0.0,
+  };
+  console.log(message)
   const req = { message, loginToken, recipientKind, to: dstUuid };
   const resp = await fetch(serverURL + "api/v1/send_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
-  return handleResp(resp);
+  return handleResp(resp, true);
 };
 
 export const recommendations = async () => {
