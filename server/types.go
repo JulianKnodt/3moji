@@ -73,7 +73,7 @@ type Message struct {
 	SentAt int64 `json:"sentAt"`
 
 	// 0-24 for the hour the message is sent at.
-	LocalHour float64
+	LocalHour float64 `json:"localHour"`
 }
 
 func (m *Message) Expired(now time.Time) bool {
