@@ -129,11 +129,15 @@ const MainApp = () => {
 
   const login = async (email, password) => {
     const resp = await Queries.login(email, password);
-    successEntry(resp);
+    if (resp instanceof Queries.Error) {
+      alert(resp.msg);
+    } else successEntry(resp);
   }
   const signup = async (name, email, password) => {
     const resp = await Queries.signup(name, email, password);
-    successEntry(resp);
+    if (resp instanceof Queries.Error) {
+      alert(resp.msg);
+    } else successEntry(resp);
   };
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {

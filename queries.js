@@ -118,12 +118,12 @@ export const signup = async (name, email, password) => {
   return handleResp(resp);
 };
 
-export const login = async (name, email, password) => {
+export const login = async (email, password) => {
   const digest = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256, password,
   );
-  const req = { email, name, hashedPassword: digest };
-  const dst = serverURL + "api/v1/sign_up/";
+  const req = { email, hashedPassword: digest };
+  const dst = serverURL + "api/v1/login/";
   const resp = await fetch(dst, {
     method: 'POST', headers, body: JSON.stringify(req),
   });

@@ -20,7 +20,7 @@ type ListPeopleResponse struct {
 
 type AckMsgRequest struct {
 	// Msg being replied to
-	MsgID Uuid `json:"msgID"`
+	MsgID Uuid `json:"msgID,string"`
 	// Reply is a single emoji reply.
 	Reply EmojiReply `json:"reply"`
 	// LoginToken of the user
@@ -48,7 +48,7 @@ const (
 )
 
 type FriendRequest struct {
-	Other      Uuid         `json:"other"`
+	Other      Uuid         `json:"other,string"`
 	LoginToken LoginToken   `json:"loginToken"`
 	Action     FriendAction `json:"action"`
 }
@@ -87,7 +87,7 @@ type SendMessageRequest struct {
 	// Whether this is a message intended for a group or an individual
 	RecipientKind MessageRecipientKind `json:"recipientKind"`
 	// Uuid of group or individual being sent to
-	To Uuid `json:"to"`
+	To Uuid `json:"to,string"`
 }
 
 type GroupOp int
@@ -104,7 +104,7 @@ type GroupRequest struct {
 	// GroupName is empty if not creating a group, but is only used for display and not
 	// identification for now.
 	GroupName string `json:"groupName"`
-	GroupUuid Uuid   `json:"groupUuid"`
+	GroupUuid Uuid   `json:"groupUuid,string"`
 
 	// User's login token
 	LoginToken LoginToken `json:"loginToken"`

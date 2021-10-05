@@ -48,14 +48,14 @@ func NewEmail(s string) (Email, error) {
 }
 
 type User struct {
-	Uuid  Uuid   `json:"uuid"`
+	Uuid  Uuid   `json:"uuid,string"`
 	Name  string `json:"name"`
 	Email Email  `json:"email"`
 	// TODO add other preference fields here
 }
 
 type Group struct {
-	Uuid Uuid `json:"uuid"`
+	Uuid Uuid `json:"uuid,string"`
 	// Display Name, need not be unique
 	Name  string            `json:"name"`
 	Users map[Uuid]struct{} `json:"users"`
@@ -65,7 +65,7 @@ type Group struct {
 // Message is a struct that represents an emoji message between two people
 type Message struct {
 	// Messages Uuid
-	Uuid     Uuid         `json:"uuid"`
+	Uuid     Uuid         `json:"uuid,string"`
 	Emojis   EmojiContent `json:"emojis"`
 	Source   User         `json:"source"`
 	Location string       `json:"location"`
@@ -82,7 +82,7 @@ func (m *Message) Expired(now time.Time) bool {
 }
 
 type MessageReply struct {
-	Message Uuid `json:"message"`
+	Message Uuid `json:"message,string"`
 
 	// This is so the user can see what they originally sent
 	OriginalContent EmojiContent `json:"originalContent"`
@@ -97,7 +97,7 @@ type LoginToken struct {
 	ValidUntil int64 `json:"validUntil"`
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
-	Uuid Uuid `json:"uuid"`
+	Uuid Uuid `json:"uuid,string"`
 
 	UserEmail Email `json:"userEmail"`
 }
