@@ -65,37 +65,35 @@ const MainApp = () => {
       setCurrentView(views.Home);
     });
   }, []);
+  Queries.recommendations().then(resp => {
+    console.log(resp);
+  });
 
   const updateFriendsAndInvites = async () => {
     const friends = await Queries.getPeople(loginToken,50,Queries.listPeopleKind.all);
     if (friends instanceof Queries.Error) {
-      // console.log(friends.msg);
-    } else{
-      // console.log(friends);
-      setFriends(friends);
-    }
+      alert(friends.msg);
+      return
+    } else setFriends(friends);
+    // TODO fetch invites
     setInvites([{name:"A group",message:"🥞🍳🥓"}]);
   };
 
   const getGroups = async () => {
     const group = await Queries.getGroups(loginToken);
-    if(group == null || group.groups == null){
+    if (group == null || group.groups == null) {
       setGroups([]);
     } else {
       setGroups(group.groups);
     }
     const joined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.joinedGroups);
-    if(joined == null || joined.groups == null){
+    if (joined == null || joined.groups == null) {
       setJoinedGroups([]);
-    } else {
-      setJoinedGroups(joined.groups);
-    }
+    } else setJoinedGroups(joined.groups);
     const notJoined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.notJoinedGroups);
     if (notJoined == null || notJoined.groups == null) {
       setNotJoinedGroups([]);
-    } else {
-      setNotJoinedGroups(notJoined.groups);
-    }
+    } else setNotJoinedGroups(notJoined.groups);
   }
 
   // when a login token is acquired, will reload friends list and get current invitations.
@@ -117,7 +115,7 @@ const MainApp = () => {
 
   const back = () => {
     const prev = stack.pop();
-    if (prev!=undefined) setCurrentView(prev);
+    if (prev != undefined) setCurrentView(prev);
   }
   const successEntry = respJSON => {
     saveLoginToken(respJSON.loginToken);
@@ -141,7 +139,6 @@ const MainApp = () => {
   };
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
-      // console.log(email)
       if (!email) return null
       if (email == "") return null;
       if (!email.endsWith("princeton.edu")) {
@@ -465,7 +462,11 @@ const MainApp = () => {
       />
       <View style={styles.button}>
         <Button title="Create" onPress={async()=>{
-          await Queries.createGroup(loginToken,groupName);
+          const resp = await Queries.createGroup(loginToken,groupName);
+          if (resp instanceof Queries.Error) {
+            alert(resp.msg);
+            return
+          }
           getGroups();
           back();
         }}/>

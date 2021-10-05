@@ -223,24 +223,27 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a post request")
 			return
 		}
 		var req GroupRequest
 		dec := json.NewDecoder(r.Body)
 		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
 			return
 		}
 		token := req.LoginToken
 		if err := s.ValidateLoginToken(token); err != nil {
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating request: %v", err)
 			return
 		}
 		user, exists := s.UserFor(token)
 		if !exists {
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 		s.mu.Lock()
@@ -274,6 +277,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			uuid, err := generateUuid()
 			if err != nil {
 				w.WriteHeader(500)
+				fmt.Fprint(w, "Error while generating Uuid")
 				return
 			}
 			group := Group{

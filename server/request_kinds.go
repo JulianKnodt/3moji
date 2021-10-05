@@ -104,7 +104,7 @@ type GroupRequest struct {
 	// GroupName is empty if not creating a group, but is only used for display and not
 	// identification for now.
 	GroupName string `json:"groupName"`
-	GroupUuid Uuid   `json:"groupUuid,string"`
+	GroupUuid Uuid   `json:"groupUuid,omitempty,string"`
 
 	// User's login token
 	LoginToken LoginToken `json:"loginToken"`

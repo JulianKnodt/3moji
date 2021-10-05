@@ -54,10 +54,10 @@ export const leaveGroup = async (loginToken, groupUuid) =>
   groupOp(loginToken, "", groupUuid, groupOpKind.leaveGroup);
 
 export const createGroup = async (loginToken, groupName) =>
-  groupOp(loginToken, groupName, 0, groupOpKind.createGroup);
+  groupOp(loginToken, groupName, null, groupOpKind.createGroup);
 
 const groupOp = async (
-  loginToken, groupName="", groupUuid=0, kind=groupOpKind.joinGroup,
+  loginToken, groupName="", groupUuid=null, kind=groupOpKind.joinGroup,
 ) => {
   console.log(groupName,groupUuid);
   if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup) {
