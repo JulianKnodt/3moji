@@ -1,3 +1,5 @@
+import * as Crypto from 'expo-crypto';
+
 const serverURL = "https://api-3moji.herokuapp.com/";
 const headers = {
   Accept: 'application/json', 'Content-Type': 'application/json',
@@ -83,7 +85,6 @@ export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
     "sentAt": 0,
     "localHour": 0.0,
   };
-  console.log(message)
   const req = { message, loginToken, recipientKind, to: dstUuid };
   const resp = await fetch(serverURL + "api/v1/send_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
@@ -96,6 +97,30 @@ export const recommendations = async () => {
   const localTime = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
   const req = { localTime };
   const resp = await fetch(serverURL + "api/v1/recs/", {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp);
+};
+
+export const signup = async (name, email, password) => {
+  const digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256, password,
+  );
+  const req = { email, name, hashedPassword: digest };
+  const dst = serverURL + "api/v1/sign_up/";
+  const resp = await fetch(dst, {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp);
+};
+
+export const login = async (name, email, password) => {
+  const digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256, password,
+  );
+  const req = { email, name, hashedPassword: digest };
+  const dst = serverURL + "api/v1/sign_up/";
+  const resp = await fetch(dst, {
     method: 'POST', headers, body: JSON.stringify(req),
   });
   return handleResp(resp);

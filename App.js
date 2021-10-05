@@ -146,22 +146,9 @@ const MainApp = () => {
       // console.log(await resp.text());
     } else successEntry(await resp.json());
   }
-  const signup = async (name, email, password) =>{
-    const digest = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      password,
-    );
-    // console.log(name, email, digest);
-    const dst = serverURL + "api/v1/sign_up/";
-    const resp = await fetch(dst, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ email, name, hashedPassword: digest }),
-    });
-    if (resp.status !== 200) {
-      // console.log(resp.status);
-    } else successEntry(await resp.json());
-  }
+  const signup = async (name, email, password) => (
+    successEntry(Queries.signup(name, email, password))
+  );
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
       // console.log(email)
