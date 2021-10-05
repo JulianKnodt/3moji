@@ -5,7 +5,7 @@ import EmojiBoard from 'react-native-emoji-board';
 import { views } from './constants'
 import { styles } from './styles';
 import * as Crypto from 'expo-crypto';
-import * as Queries from "./queries";
+import * as Queries from './queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const serverURL = "https://api-3moji.herokuapp.com/";
@@ -79,22 +79,21 @@ const MainApp = () => {
 
   const getGroups = async () => {
     const group = await Queries.getGroups(loginToken);
-    // console.log(group);
     if(group == null || group.groups == null){
       setGroups([]);
-    }else{
+    } else {
       setGroups(group.groups);
     }
     const joined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.joinedGroups);
     if(joined == null || joined.groups == null){
       setJoinedGroups([]);
-    }else{
+    } else {
       setJoinedGroups(joined.groups);
     }
     const notJoined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.notJoinedGroups);
-    if(notJoined == null || notJoined.groups == null){
+    if (notJoined == null || notJoined.groups == null) {
       setNotJoinedGroups([]);
-    }else{
+    } else {
       setNotJoinedGroups(notJoined.groups);
     }
   }
@@ -129,26 +128,13 @@ const MainApp = () => {
   };
 
   const login = async (email, password) => {
-    const digest = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      password,
-    );
-    const resp = await fetch(serverURL + "api/v1/login/", {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        email,
-        hashedPassword: digest,
-      }),
-    });
-    if (resp.status !== 200) {
-      // console.log(resp.status);
-      // console.log(await resp.text());
-    } else successEntry(await resp.json());
+    const resp = await Queries.login(email, password);
+    successEntry(resp);
   }
-  const signup = async (name, email, password) => (
-    successEntry(Queries.signup(name, email, password))
-  );
+  const signup = async (name, email, password) => {
+    const resp = await Queries.signup(name, email, password);
+    successEntry(resp);
+  };
   const  validateEmail = (email,setEmailError) => {
     const error = (() => {
       // console.log(email)

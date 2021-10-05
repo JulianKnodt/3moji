@@ -5,7 +5,99 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"time"
 )
+
+func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a post request")
+			return
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		var sup SignUpRequest
+		if err := dec.Decode(&sup); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Incorrect sign up format: %v", err)
+			return
+		}
+		email, err := NewEmail(sup.Email)
+		if err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Failed when parsing email: %v", err)
+			return
+		}
+		enc := json.NewEncoder(w)
+		_, err = s.SignUp(email, sup.Name, sup.HashedPassword)
+		if err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Failed when signing up: %v", err)
+			return
+		}
+		loginToken, err := s.Login(email, sup.HashedPassword)
+		if err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Failed when logging up: %v", err)
+			return
+		}
+		user, exists := s.UserFor(loginToken)
+		if !exists {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "User does not exist after signing up: %v", err)
+			return
+		}
+		resp := LoginResponse{
+			User:       *user,
+			LoginToken: loginToken,
+		}
+		enc.Encode(resp)
+		return
+	}
+}
+
+func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a post request")
+			return
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		var lp LoginRequest
+		if err := dec.Decode(&lp); err != nil {
+			w.WriteHeader(401)
+			return
+		}
+		email, err := NewEmail(lp.Email)
+		if err != nil {
+			w.WriteHeader(401)
+			json.NewEncoder(w).Encode(err)
+			return
+		}
+		loginToken, err := s.Login(email, lp.HashedPassword)
+		enc := json.NewEncoder(w)
+		if err != nil {
+			w.WriteHeader(401)
+			enc.Encode(err)
+			return
+		}
+		user, exists := s.UserFor(loginToken)
+		if !exists {
+			fmt.Println(s.Users)
+			w.WriteHeader(500)
+			return
+		}
+		resp := LoginResponse{
+			User:       *user,
+			LoginToken: loginToken,
+		}
+		enc.Encode(resp)
+		return
+	}
+}
 
 func (s *Server) ListPeopleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -15,6 +107,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
 		var req ListPeopleRequest
 		if err := dec.Decode(&req); err != nil {
 			w.WriteHeader(401)
@@ -84,6 +177,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		}
 		var req AckMsgRequest
 		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
 			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
@@ -133,6 +227,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 		}
 		var req GroupRequest
 		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
 			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
@@ -207,6 +302,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
 		var req ListGroupRequest
 		if err := dec.Decode(&req); err != nil {
 			w.WriteHeader(401)
@@ -275,6 +371,7 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
 		var req RecommendationRequest
 		if err := dec.Decode(&req); err != nil {
 			fmt.Printf("Invalid request: %v\n", err)
@@ -311,6 +408,164 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 		}
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
+		return
+	}
+}
+
+func (s *Server) FriendHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(404)
+			return
+		}
+		var fp FriendRequest
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		if err := dec.Decode(&fp); err != nil {
+			fmt.Printf("Error decoding send message %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		if err := s.ValidateLoginToken(fp.LoginToken); err != nil {
+			fmt.Printf("Invalid login token: %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		user, exists := s.UserFor(fp.LoginToken)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		switch fp.Action {
+		case Rmfriend:
+			delete(s.Friends[user.Uuid], fp.Other)
+		case AddFriend:
+			if _, exists := s.Friends[user.Uuid]; !exists {
+				s.Friends[user.Uuid] = map[Uuid]struct{}{}
+			}
+			s.Friends[user.Uuid][fp.Other] = struct{}{}
+		default:
+			w.WriteHeader(404)
+			return
+		}
+		w.WriteHeader(200)
+		return
+	}
+}
+
+func (s *Server) SendMsgHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			return
+		}
+		var req SendMessageRequest
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		if err := dec.Decode(&req); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
+			return
+		}
+		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
+			w.WriteHeader(401)
+			return
+		}
+
+		// save message for all users
+		// TODO delete old messages as well
+		msg := req.Message
+		var err error
+		if msg.Uuid, err = generateUuid(); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		s.Messages[msg.Uuid] = msg
+		switch req.RecipientKind {
+		case MsgGroup:
+			group := s.Groups[req.To]
+			for userUuid := range group.Users {
+				s.UserToMessages[userUuid] = append(s.UserToMessages[userUuid], msg.Uuid)
+			}
+		case MsgFriend:
+			s.UserToMessages[req.To] = append(s.UserToMessages[req.To], msg.Uuid)
+		}
+
+		w.WriteHeader(200)
+		return
+	}
+}
+
+func (s *Server) RecvMsgHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(404)
+			return
+		}
+		var req RecvMsgRequest
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		if err := dec.Decode(&req); err != nil {
+			fmt.Printf("Error decoding recv message %v", err)
+			w.WriteHeader(401)
+			return
+		}
+		token := req.LoginToken
+		if s.ValidateLoginToken(token) != nil {
+			w.WriteHeader(401)
+			return
+		}
+		user, exists := s.UserFor(token)
+		if !exists {
+			w.WriteHeader(401)
+			return
+		}
+
+		var out RecvMsgResponse
+		s.mu.Lock()
+		now := time.Now()
+		defer s.mu.Unlock()
+		for _, uuid := range s.UserToMessages[user.Uuid] {
+			msg, exists := s.Messages[uuid]
+			if !exists {
+				continue
+			} else if msg.Expired(now) {
+				delete(s.Messages, uuid)
+				continue
+			}
+			out.NewMessages = append(out.NewMessages, msg)
+		}
+		for _, uuid := range s.UserToReplies[user.Uuid] {
+			reply, replyExists := s.Replies[uuid]
+			if !replyExists {
+				continue
+			}
+			msg, exists := s.MessageForReplyLocked(reply)
+			if !exists {
+				continue
+			} else if msg.Expired(now) {
+				delete(s.Messages, uuid)
+				continue
+			}
+			out.NewReplies = append(out.NewReplies, reply)
+		}
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(&out); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		// if success then empty out the messages
+		if req.DeleteOld {
+			s.UserToMessages[user.Uuid] = nil
+			s.UserToReplies[user.Uuid] = nil
+		}
 		return
 	}
 }

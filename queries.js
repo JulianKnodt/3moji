@@ -74,6 +74,12 @@ const groupOp = async (
   return handleResp(resp,true);
 };
 
+const localTime = () => {
+  const now = new Date();
+  const localTime = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+  return localTime;
+};
+
 export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
   recipientKind = toGroup ? 0 : 1;
   // TODO message is not just a string but a complex object.
@@ -83,7 +89,7 @@ export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
     "source":  {"uuid":loginToken.uuid,"name":"","email":loginToken.userEmail},
     "location": "",
     "sentAt": 0,
-    "localHour": 0.0,
+    "localTime": localTime(),
   };
   const req = { message, loginToken, recipientKind, to: dstUuid };
   const resp = await fetch(serverURL + "api/v1/send_msg/", {
@@ -93,9 +99,7 @@ export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
 };
 
 export const recommendations = async () => {
-  const now = new Date();
-  const localTime = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
-  const req = { localTime };
+  const req = { localTime: localTime() };
   const resp = await fetch(serverURL + "api/v1/recs/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
@@ -132,8 +136,6 @@ const handleResp = async (resp,ignoreResp = false) => {
   if (resp.status != 200) {
     return new Error(resp.status, await resp.text());
   }
-  if(ignoreResp){
-    return null;
-  }
+  if (ignoreResp) return null;
   return resp.json();
 };
