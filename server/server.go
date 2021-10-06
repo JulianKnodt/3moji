@@ -187,19 +187,18 @@ func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, erro
 // Checks that a login token is correct, and matches the currently existing token kept on the
 // token.
 func (s *Server) ValidateLoginToken(token LoginToken) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	existingToken, exists := s.LoggedIn[token.UserEmail]
+	if !exists {
+		return fmt.Errorf("Token does not exist")
+	} else if existingToken != token {
+		return fmt.Errorf("Tokens do not match want: %v, got: %v", existingToken, token)
+	}
+	if existingToken.Expired() {
+		return fmt.Errorf("Token has expired")
+	}
 	return nil
-	/*
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		existingToken, exists := s.LoggedIn[token.UserEmail]
-		if !exists {
-			fmt.Println(s.LoggedIn)
-			return fmt.Errorf("Token does not exist")
-		} else if existingToken != token {
-			return fmt.Errorf("Tokens do not match want: %v, got: %v", existingToken, token)
-		}
-		return nil
-	*/
 }
 
 // Given a login token, it will return the user who used that login token. mu should not be

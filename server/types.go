@@ -104,6 +104,10 @@ type LoginToken struct {
 	UserEmail Email `json:"userEmail"`
 }
 
+func (lt *LoginToken) Expired() bool {
+	return time.Unix(lt.ValidUntil, 0).After(time.Now())
+}
+
 // Uuid represents a unique identifier, temporary for now but maybe upgrade to [2]uint64
 // at some point.
 type Uuid uint64
