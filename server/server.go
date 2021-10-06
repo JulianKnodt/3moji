@@ -33,14 +33,13 @@ type Server struct {
 	HashedPasswords map[Uuid]string
 
 	// In-memory map of recipient to Messages
-	UserToMessages map[Uuid][]Uuid
+	UserToMessages map[Uuid]map[Uuid]struct{}
 	// TODO add a timer so that these will eventually expire or be cleaned up periodically.
 	Messages map[Uuid]Message
 
 	Users map[Uuid]*User
 	// List of friends for a given user: user -> their friends
-	Friends       map[Uuid]map[Uuid]struct{}
-	MutualFriends map[Uuid]map[Uuid]struct{}
+	Friends map[Uuid]map[Uuid]struct{}
 
 	Groups        map[Uuid]Group
 	UsersToGroups map[Uuid]map[Uuid]struct{}
@@ -54,12 +53,13 @@ type Server struct {
 }
 
 func NewServer() *Server {
+	// TODO only construct expvars if not test environment
 	return &Server{
 		SignedUp:        map[Email]*User{},
 		LoggedIn:        map[Email]LoginToken{},
 		HashedPasswords: map[Uuid]string{},
 
-		UserToMessages: map[Uuid][]Uuid{},
+		UserToMessages: map[Uuid]map[Uuid]struct{}{},
 		Messages:       map[Uuid]Message{},
 
 		Groups:        map[Uuid]Group{},
@@ -83,12 +83,14 @@ func (srv *Server) Serve(addr string) error {
 
 	mux.HandleFunc("/api/v1/friend/", srv.FriendHandler())
 	mux.HandleFunc("/api/v1/groups/", srv.GroupHandler())
+
+	mux.HandleFunc("/api/v1/list_friends/", srv.ListPeopleHandler())
+	mux.HandleFunc("/api/v1/list_groups/", srv.ListGroupHandler())
+
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
 	mux.HandleFunc("/api/v1/ack_msg/", srv.AckMsgHandler())
 
-	mux.HandleFunc("/api/v1/list_friends/", srv.ListPeopleHandler())
-	mux.HandleFunc("/api/v1/list_groups/", srv.ListGroupHandler())
 	mux.HandleFunc("/api/v1/recs/", srv.RecommendationHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())

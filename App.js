@@ -367,7 +367,6 @@ const MainApp = () => {
     </View>
   </View>};
   const AckMsg = () => {
-    console.log(invites);
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
     return <View style={styles.container}>
@@ -413,20 +412,18 @@ const MainApp = () => {
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
   </View>};
+
   const AddGroup = () => {
-    // console.log(groups);
     return <View style={styles.container}>
       {notJoinedGroups.map(group => (
         <View key={group.uuid} style={styles.button}>
           <Button
             title={group.name}
             onPress={async ()=>{
-              console.log("group",group);
               const resp = await Queries.joinGroup(loginToken,group.uuid);
               if (resp instanceof Queries.Error) {
                 return alert(resp.msg);
               }
-              console.log(resp)
               getGroups();
               setMessaging(group);
               gotoView(views.DraftMsg);

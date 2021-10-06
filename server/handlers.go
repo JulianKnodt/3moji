@@ -16,7 +16,6 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dec := json.NewDecoder(r.Body)
-		dec.UseNumber()
 		var sup SignUpRequest
 		if err := dec.Decode(&sup); err != nil {
 			w.WriteHeader(401)
@@ -115,6 +114,10 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Malformed request: %v", err)
 			return
 		}
+		// Cap the amount manually.
+		if req.Amount > 50 {
+			req.Amount = 50
+		}
 		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
 			w.WriteHeader(401)
 			fmt.Fprintf(w, "Invalid login token: %v", err)
@@ -135,10 +138,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		case All:
 			cond = func(u *User) bool { return true }
 		case OnlyFriends:
-			cond = func(u *User) bool {
-				_, exists := s.Friends[user.Uuid][u.Uuid]
-				return exists
-			}
+			// Omitted due to separate loop below
 		case NotFriends:
 			cond = func(u *User) bool {
 				_, exists := s.Friends[user.Uuid][u.Uuid]
@@ -149,19 +149,32 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Unexpected list kind: %v", req.Kind)
 			return
 		}
-		// TODO this is inefficient since we explicitly iterate over everyone.
-		// Probably need to fix later when actually using a database.
-		for _, person := range s.Users {
-			if person.Uuid == user.Uuid {
-				continue
+
+		if req.Kind == OnlyFriends {
+			for uuid := range s.Friends[user.Uuid] {
+				person, exists := s.Users[uuid]
+				if !exists || uuid == user.Uuid {
+					continue
+				}
+				resp.People = append(resp.People, *person)
+				amt -= 1
+				if amt == 0 {
+					break
+				}
 			}
-			if !cond(person) {
-				continue
-			}
-			resp.People = append(resp.People, *person)
-			amt -= 1
-			if amt == 0 {
-				break
+		} else {
+			for _, person := range s.Users {
+				if person.Uuid == user.Uuid {
+					continue
+				}
+				if !cond(person) {
+					continue
+				}
+				resp.People = append(resp.People, *person)
+				amt -= 1
+				if amt == 0 {
+					break
+				}
 			}
 		}
 		enc := json.NewEncoder(w)
@@ -197,13 +210,18 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			fmt.Fprint(w, "User does not exist")
 			return
 		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		originalMessage, exists := s.Messages[req.MsgID]
 		if !exists {
 			w.WriteHeader(404)
 			fmt.Fprint(w, "Message being replied to could not be found!")
 			return
 		}
-		delete(s.Messages, req.MsgID)
+		// Do not delete message here, let it naturally expire but now a user should not be able to
+		// see it anymore.
+		delete(s.UserToMessages[user.Uuid], req.MsgID)
+		// delete(s.Messages, req.MsgID)
 
 		replyUuid, err := generateUuid()
 		if err != nil {
@@ -211,7 +229,6 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			fmt.Fprint(w, "Internal server error")
 			return
 		}
-		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
 		// TODO check for collisions?
 		s.Replies[replyUuid] = MessageReply{
 			Message:         req.MsgID,
@@ -219,6 +236,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			Reply:           req.Reply,
 			From:            *user,
 		}
+		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
 
 		w.WriteHeader(200)
 		return
@@ -501,8 +519,6 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			return
 		}
 
-		// save message for all users
-		// TODO delete old messages as well
 		msg := req.Message
 		msg.Source = *user
 		var err error
@@ -511,18 +527,24 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			fmt.Fprint(w, "Internal server error")
 			return
 		}
+
 		s.mu.Lock()
 		defer s.mu.Unlock()
-
 		s.Messages[msg.Uuid] = msg
 		switch req.RecipientKind {
 		case MsgGroup:
 			group := s.Groups[req.To]
 			for userUuid := range group.Users {
-				s.UserToMessages[userUuid] = append(s.UserToMessages[userUuid], msg.Uuid)
+				if s.UserToMessages[userUuid] == nil {
+					s.UserToMessages[userUuid] = map[Uuid]struct{}{}
+				}
+				s.UserToMessages[userUuid][msg.Uuid] = struct{}{}
 			}
 		case MsgFriend:
-			s.UserToMessages[req.To] = append(s.UserToMessages[req.To], msg.Uuid)
+			if s.UserToMessages[req.To] == nil {
+				s.UserToMessages[req.To] = map[Uuid]struct{}{}
+			}
+			s.UserToMessages[req.To][msg.Uuid] = struct{}{}
 		}
 
 		w.WriteHeader(200)
@@ -559,10 +581,11 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 		}
 
 		var out RecvMsgResponse
-		s.mu.Lock()
 		now := time.Now()
+
+		s.mu.Lock()
 		defer s.mu.Unlock()
-		for _, uuid := range s.UserToMessages[user.Uuid] {
+		for uuid := range s.UserToMessages[user.Uuid] {
 			msg, exists := s.Messages[uuid]
 			if !exists {
 				continue
@@ -587,7 +610,7 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 			out.NewReplies = append(out.NewReplies, reply)
 		}
 		enc := json.NewEncoder(w)
-		if err := enc.Encode(&out); err != nil {
+		if err := enc.Encode(out); err != nil {
 			w.WriteHeader(500)
 			fmt.Fprint(w, "Internal server error")
 			return
