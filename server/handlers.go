@@ -409,6 +409,10 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🍷🎉🍹",
 				"🍰🍦🧋'",
 			}...)
+		case 23, 24, 1:
+			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+				"🌌🚶🌃",
+			}...)
 		}
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
