@@ -56,11 +56,15 @@ const MainApp = () => {
     getLocation();
   }, []);
 
+
   useEffect(() => {
     loadLoginToken().then(token => {
       if (token == null) return
       setLoginToken(token);
       setCurrentView(views.Home);
+      Queries.recvMsg(loginToken).then(resp => {
+        console.log(resp);
+      });
     });
   }, []);
 

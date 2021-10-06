@@ -103,7 +103,7 @@ export const recvMsg = async (loginToken) => {
   const resp = await fetch(serverURL + "api/v1/recv_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
-  return handleResp(resp, true);
+  return handleResp(resp);
 }
 
 export const ackMsg = async (msgID, reply, loginToken) => {
@@ -111,7 +111,7 @@ export const ackMsg = async (msgID, reply, loginToken) => {
   const resp = await fetch(serverURL + "api/v1/ack_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
-  return handleResp(resp, true);
+  return handleResp(resp);
 };
 
 export const recommendations = async () => {

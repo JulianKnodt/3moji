@@ -533,7 +533,13 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 		s.Messages[msg.Uuid] = msg
 		switch req.RecipientKind {
 		case MsgGroup:
-			group := s.Groups[req.To]
+			group, exists := s.Groups[req.To]
+			if !exists {
+				w.WriteHeader(401)
+				fmt.Fprint(w, "Group does not exist")
+				return
+			}
+			msg.SentTo = group.Name
 			for userUuid := range group.Users {
 				if s.UserToMessages[userUuid] == nil {
 					s.UserToMessages[userUuid] = map[Uuid]struct{}{}
@@ -541,6 +547,13 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				s.UserToMessages[userUuid][msg.Uuid] = struct{}{}
 			}
 		case MsgFriend:
+			user, exists := s.Users[req.To]
+			if !exists {
+				w.WriteHeader(401)
+				fmt.Fprint(w, "User does not exist")
+				return
+			}
+			msg.SentTo = user.Name
 			if s.UserToMessages[req.To] == nil {
 				s.UserToMessages[req.To] = map[Uuid]struct{}{}
 			}
