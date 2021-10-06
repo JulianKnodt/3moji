@@ -12,7 +12,7 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
-			fmt.Fprint(w, "Not a post request")
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		dec := json.NewDecoder(r.Body)
@@ -61,7 +61,7 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
-			fmt.Fprint(w, "Not a post request")
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		dec := json.NewDecoder(r.Body)
@@ -69,31 +69,32 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 		var lp LoginRequest
 		if err := dec.Decode(&lp); err != nil {
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
 			return
 		}
 		email, err := NewEmail(lp.Email)
 		if err != nil {
 			w.WriteHeader(401)
-			json.NewEncoder(w).Encode(err)
+			fmt.Fprintf(w, "Error logging in, email does not appear to be an email: %v", err)
 			return
 		}
 		loginToken, err := s.Login(email, lp.HashedPassword)
-		enc := json.NewEncoder(w)
 		if err != nil {
 			w.WriteHeader(401)
-			enc.Encode(err)
+			fmt.Fprint(w, "Error logging in, email or password may be incorrect")
 			return
 		}
 		user, exists := s.UserFor(loginToken)
 		if !exists {
-			fmt.Println(s.Users)
 			w.WriteHeader(500)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 		resp := LoginResponse{
 			User:       *user,
 			LoginToken: loginToken,
 		}
+		enc := json.NewEncoder(w)
 		enc.Encode(resp)
 		return
 	}
@@ -102,8 +103,8 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 func (s *Server) ListPeopleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(404)
-			fmt.Fprintf(w, "Not a post request: %v", r.Method)
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		dec := json.NewDecoder(r.Body)
@@ -173,29 +174,33 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		var req AckMsgRequest
 		dec := json.NewDecoder(r.Body)
 		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding recv message %v", err)
 			return
 		}
 		token := req.LoginToken
 		if err := s.ValidateLoginToken(token); err != nil {
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token %v", err)
 			return
 		}
 		user, exists := s.UserFor(token)
 		if !exists {
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 		originalMessage, exists := s.Messages[req.MsgID]
 		if !exists {
 			w.WriteHeader(404)
+			fmt.Fprint(w, "Message being replied to could not be found!")
 			return
 		}
 		delete(s.Messages, req.MsgID)
@@ -203,6 +208,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		replyUuid, err := generateUuid()
 		if err != nil {
 			w.WriteHeader(500)
+			fmt.Fprint(w, "Internal server error")
 			return
 		}
 		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
@@ -223,7 +229,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
-			fmt.Fprint(w, "Not a post request")
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		var req GroupRequest
@@ -302,7 +308,8 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 func (s *Server) ListGroupHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(404)
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		dec := json.NewDecoder(r.Body)
@@ -313,14 +320,12 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Invalid request: %v\n", err)
 			return
 		}
-		/*
-			    // TODO why is validating tokens not working?
-					if err := s.ValidateLoginToken(req.LoginToken); err != nil {
-						fmt.Printf("Invalid login token: %v\n", err)
-						w.WriteHeader(401)
-						return
-					}
-		*/
+		// TODO why is validating tokens not working?
+		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token: %v", err)
+			return
+		}
 		user, exists := s.UserFor(req.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
@@ -371,15 +376,16 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 func (s *Server) RecommendationHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(404)
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		dec := json.NewDecoder(r.Body)
 		dec.UseNumber()
 		var req RecommendationRequest
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Invalid request: %v\n", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error parsing request: %v", err)
 			return
 		}
 		// TODO recommendations should query a data structure which specifies user usage at a given
@@ -409,7 +415,7 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🍷🎉🍹",
 				"🍰🍦🧋'",
 			}...)
-		case 23, 24, 1:
+		case 23, 0, 1:
 			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
 				"🌌🚶🌃",
 			}...)
@@ -423,25 +429,27 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 func (s *Server) FriendHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(404)
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		var fp FriendRequest
 		dec := json.NewDecoder(r.Body)
 		dec.UseNumber()
 		if err := dec.Decode(&fp); err != nil {
-			fmt.Printf("Error decoding send message %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
 			return
 		}
 		if err := s.ValidateLoginToken(fp.LoginToken); err != nil {
-			fmt.Printf("Invalid login token: %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
 		user, exists := s.UserFor(fp.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 
@@ -458,6 +466,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			s.Friends[user.Uuid][fp.Other] = struct{}{}
 		default:
 			w.WriteHeader(404)
+			fmt.Fprint(w, "Unknown friend action")
 			return
 		}
 		w.WriteHeader(200)
@@ -469,6 +478,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a POST request")
 			return
 		}
 		var req SendMessageRequest
@@ -481,15 +491,24 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 		}
 		if err := s.ValidateLoginToken(req.LoginToken); err != nil {
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token: %v", err)
+			return
+		}
+		user, exists := s.UserFor(req.LoginToken)
+		if !exists {
+			w.WriteHeader(401)
+			fmt.Fprint(w, "Could not find user sending message")
 			return
 		}
 
 		// save message for all users
 		// TODO delete old messages as well
 		msg := req.Message
+		msg.Source = *user
 		var err error
 		if msg.Uuid, err = generateUuid(); err != nil {
 			w.WriteHeader(500)
+			fmt.Fprint(w, "Internal server error")
 			return
 		}
 		s.mu.Lock()
@@ -513,26 +532,29 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 
 func (s *Server) RecvMsgHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(404)
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a post request")
 			return
 		}
 		var req RecvMsgRequest
 		dec := json.NewDecoder(r.Body)
 		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
-			fmt.Printf("Error decoding recv message %v", err)
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
 			return
 		}
 		token := req.LoginToken
-		if s.ValidateLoginToken(token) != nil {
+		if err := s.ValidateLoginToken(token); err != nil {
 			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
 		user, exists := s.UserFor(token)
 		if !exists {
 			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
 			return
 		}
 
@@ -567,6 +589,7 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(&out); err != nil {
 			w.WriteHeader(500)
+			fmt.Fprint(w, "Internal server error")
 			return
 		}
 		// if success then empty out the messages

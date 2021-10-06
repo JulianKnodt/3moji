@@ -81,15 +81,15 @@ const localTime = () => {
 };
 
 export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
-  recipientKind = toGroup ? 0 : 1;
+  const recipientKind = toGroup ? 0 : 1;
   // TODO message is not just a string but a complex object.
   const message = {
-    "uuid": loginToken.uuid,
-    "emojis":"",//emojis,
-    "source":  {"uuid":loginToken.uuid,"name":"","email":loginToken.userEmail},
-    "location": "",
-    "sentAt": 0,
-    "localTime": localTime(),
+    uuid: loginToken.uuid,
+    emojis: emojis,
+    // source will be populated on the server.
+    location: "",
+    sentAt: Date.now(),
+    localTime: localTime(),
   };
   const req = { message, loginToken, recipientKind, to: dstUuid };
   const resp = await fetch(serverURL + "api/v1/send_msg/", {
@@ -97,6 +97,14 @@ export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
   });
   return handleResp(resp, true);
 };
+
+export const recvMsg = async (loginToken) => {
+  const req = { loginToken, deleteOld: false, };
+  const resp = await fetch(serverURL + "api/v1/recv_msg/", {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp, true);
+}
 
 export const recommendations = async () => {
   const req = { localTime: localTime() };

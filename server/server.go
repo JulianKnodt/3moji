@@ -85,6 +85,7 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/groups/", srv.GroupHandler())
 	mux.HandleFunc("/api/v1/send_msg/", srv.SendMsgHandler())
 	mux.HandleFunc("/api/v1/recv_msg/", srv.RecvMsgHandler())
+	mux.HandleFunc("/api/v1/ack_msg/", srv.AckMsgHandler())
 
 	mux.HandleFunc("/api/v1/list_friends/", srv.ListPeopleHandler())
 	mux.HandleFunc("/api/v1/list_groups/", srv.ListGroupHandler())

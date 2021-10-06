@@ -9,40 +9,13 @@ import * as Queries from './queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 
-
-const serverURL = "https://api-3moji.herokuapp.com/";
 const loginTokenKey = "@3moji-login-token";
-const headers = {
-  Accept: 'application/json', 'Content-Type': 'application/json',
-};
+const userKey = "@3moji-user";
 
 const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
   return emojis + dashs.slice(emojis.length).join(" ");
 };
-
-const saveLoginToken = async (token) => {
-  try {
-    if (!token) return await AsyncStorage.removeItem(loginTokenKey);
-    await AsyncStorage.setItem(loginTokenKey, JSON.stringify(token));
-  } catch (e) {
-    // saving error
-    console.log("failed", e)
-  }
-};
-
-const loadLoginToken = async () => {
-  try {
-    const loginToken = await AsyncStorage.getItem(loginTokenKey);
-    if (loginToken == null) return null;
-    const token = JSON.parse(loginToken);
-    // TODO validate token still valid here.
-    return token;
-  } catch (e) {
-    // retrieving error
-    console.log("failed", e)
-  }
-}
 
 const MainApp = () => {
   const [user,setUser] = useState({});
@@ -61,10 +34,10 @@ const MainApp = () => {
   const [currentView,setCurrentView] = useState(views.Splash);
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
-  
+
   const getLocation = async() =>{
     try{
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
         return;
@@ -78,8 +51,6 @@ const MainApp = () => {
         getLocation();
       }
     }
-    
-    
   }
   useEffect(() => {
     getLocation();
@@ -92,15 +63,11 @@ const MainApp = () => {
       setCurrentView(views.Home);
     });
   }, []);
-  Queries.recommendations().then(resp => {
-    console.log(resp);
-  });
 
   const updateFriendsAndInvites = async () => {
     const friends = await Queries.getPeople(loginToken,50,Queries.listPeopleKind.all);
     if (friends instanceof Queries.Error) {
-      alert(friends.msg);
-      return
+      return alert(friends.msg);
     } else setFriends(friends);
     // TODO fetch invites
     setInvites([{name:"A group",message:"🥞🍳🥓"}]);
@@ -108,20 +75,29 @@ const MainApp = () => {
 
   const getGroups = async () => {
     const group = await Queries.getGroups(loginToken);
-    if (group == null || group.groups == null) {
-      setGroups([]);
-    }else{
-      // console.log("groups",group.groups);
-      setGroups(group.groups);
+    if (group instanceof Queries.Error) {
+      alert(group.msg);
+    } else {
+      if (group == null || group.groups == null) {
+        setGroups([]);
+      } else setGroups(group.groups);
     }
     const joined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.joinedGroups);
-    if (joined == null || joined.groups == null) {
-      setJoinedGroups([]);
-    } else setJoinedGroups(joined.groups);
+    if (joined instanceof Queries.Error) {
+      alert(joined.msg);
+    } else {
+      if (joined == null || joined.groups == null) {
+        setJoinedGroups([]);
+      } else setJoinedGroups(joined.groups);
+    };
     const notJoined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.notJoinedGroups);
-    if (notJoined == null || notJoined.groups == null) {
-      setNotJoinedGroups([]);
-    } else setNotJoinedGroups(notJoined.groups);
+    if (joined instanceof Queries.Error) {
+      alert(joined.msg);
+    } else{
+      if (notJoined == null || notJoined.groups == null) {
+        setNotJoinedGroups([]);
+      } else setNotJoinedGroups(notJoined.groups);
+    };
   }
 
   // when a login token is acquired, will reload friends list and get current invitations.
@@ -182,11 +158,9 @@ const MainApp = () => {
       <View style={styles.button}>
         <Button title="Sign In" onPress={() => gotoView(views.SignIn)}/>
       </View>
-
       <View style={styles.button}>
         <Button title="Sign Up" onPress={() => gotoView(views.SignUp)}/>
       </View>
-
       <StatusBar style="auto"/>
     </View>
 
@@ -218,17 +192,14 @@ const MainApp = () => {
         style={styles.input}
         autoCapitalize="none"
         placeholder="Hi, my name is: 🥸"
-        onChangeText={(text) => {
-          setName(text);
-        }
-      }
+        onChangeText={text => setName(text)}
       />
 
       <Text>{"and password:"}</Text>
       <TextInput
         style={styles.input}
         autoCapitalize="none"
-        placeholder="my password is: 🔐 "
+        placeholder="my password is: 🔐"
         secureTextEntry={true}
         onChangeText={setPassword}
       />
@@ -251,12 +222,14 @@ const MainApp = () => {
     const [password, setPassword] = useState("");
     const [emailError,setEmailError] = useState("");
     return <View style={styles.container}>
-      <Text>{"Please fill in your Princeton Email:"}</Text>
+      <Text>{"Please fill in your email:"}</Text>
       <TextInput
         style={styles.input}
         keyboardType="email-address"
         placeholder="@princeton.edu"
         autoCapitalize="none"
+        autoComplete="off"
+        autoCorrect={false}
         onChangeText={(text) => {
           setEmail(text);
           validateEmail(text,setEmailError);
@@ -294,7 +267,7 @@ const MainApp = () => {
       </View>
       <View style={styles.button}>
         <Button
-          title="📫😆❗"
+          title="📨❗👀"
           onPress={() => gotoView(views.RecvMsg)}
         />
       </View>
@@ -337,8 +310,6 @@ const MainApp = () => {
     </View>
   };
 
-  
-
   const DraftMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
@@ -348,26 +319,10 @@ const MainApp = () => {
         setEmojiError("You need to send exactly three emojis");
         return;
       }
-      console.log(messaging);
-      const resp = await Queries.sendMsg(loginToken,emojis,messaging.uuid);
-      console.log(resp);
-      // const req = {
-      //   loginToken: loginToken,
-      // }
-      // fetch(serverURL + "api/v1/send_msg/", {
-      //   method: "POST",
-      //   headers,
-      //   body: JSON.stringify({
-      //     loginToken,
-      //     message: {
-      //       emojis: emojis,
-      //       source: user,
-      //       // TODO fill this in with the recipient.
-      //       recipients: [],
-      //       sentAt: Date.now(),
-      //     },
-      //   }),
-      // });
+      const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid);
+      if (resp instanceof Queries.Error) {
+        alert(resp.msg);
+      } else back();
     }
 
     const onClick = emoji => {
@@ -378,7 +333,7 @@ const MainApp = () => {
         setEmojiError("");
       }
     };
-  
+
     const onRemove = () => {
       if(emojis.length > 0){
         setEmoji(emojis.substring(0, emojis.length - 2));
@@ -392,16 +347,17 @@ const MainApp = () => {
     <Pressable onPress={() => setShow(!show)}>
         <Text>{displayEmoji(emojis)}</Text>
     </Pressable>
-    <EmojiBoard showBoard={show} 
-    onClick={onClick} onRemove={onRemove}
-    />
+    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
     {emojiError !== "" && <Text>{emojiError}</Text>}
     <View style={styles.button}>
       <Button title="Send" onPress={sendEmoji}/>
     </View>
     <View style={styles.button}>
       <Button title="Leave Group" color="#b81010" onPress={async()=>{
-        await Queries.leaveGroup(loginToken,messaging.uuid);
+        const resp = await Queries.leaveGroup(loginToken, messaging.uuid);
+        if (resp instanceof Queries.Error) {
+          return alert(resp.msg);
+        }
         getGroups();
         gotoView(views.SendMsg);
       }}/>
@@ -467,6 +423,9 @@ const MainApp = () => {
             onPress={async ()=>{
               console.log("group",group);
               const resp = await Queries.joinGroup(loginToken,group.uuid);
+              if (resp instanceof Queries.Error) {
+                return alert(resp.msg);
+              }
               console.log(resp)
               getGroups();
               setMessaging(group);
@@ -476,7 +435,7 @@ const MainApp = () => {
 
       ))}
       <View style={styles.button}>
-        <Button title="🆕😊🥰" onPress={()=>{gotoView(views.CreateGroup)}}/>
+        <Button title="🆕👨‍👩‍👧‍👦📨" onPress={()=>{gotoView(views.CreateGroup)}}/>
       </View>
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
@@ -497,8 +456,7 @@ const MainApp = () => {
         <Button title="Create" onPress={async()=>{
           const resp = await Queries.createGroup(loginToken,groupName);
           if (resp instanceof Queries.Error) {
-            alert(resp.msg);
-            return
+            return alert(resp.msg);
           }
           getGroups();
           back();
@@ -509,22 +467,40 @@ const MainApp = () => {
       </View>
     </View>
   };
-  if (currentView == views.Splash){
-    return <Splash />;
-  } else if (currentView == views.SignUp){
-    return <SignUp />;
-  } else if (currentView == views.SignIn){
-    return <SignIn />;
-  }
-  else if (currentView == views.Home) return <Home />;
-  else if (currentView == views.SendMsg) return <SendMsg />;
-  else if (currentView == views.RecvMsg) return <AckMsg />;
-  else if (currentView == views.DraftMsg) return <DraftMsg />;
-  else if (currentView == views.AddFriend) return <AddFriend />;
-  else if (currentView == views.AddGroup) return <AddGroup />;
-  else if (currentView == views.CreateGroup) return <CreateGroup />;
+  if (currentView == views.Splash) return <Splash/>;
+  else if (currentView == views.SignUp) return <SignUp/>;
+  else if (currentView == views.SignIn) return <SignIn/>;
+  else if (currentView == views.Home) return <Home/>;
+  else if (currentView == views.SendMsg) return <SendMsg/>;
+  else if (currentView == views.RecvMsg) return <AckMsg/>;
+  else if (currentView == views.DraftMsg) return <DraftMsg/>;
+  else if (currentView == views.AddFriend) return <AddFriend/>;
+  else if (currentView == views.AddGroup) return <AddGroup/>;
+  else if (currentView == views.CreateGroup) return <CreateGroup/>;
   else throw `Unknown view {currentView}`;
-
-}
+};
 
 export default MainApp;
+
+const saveLoginToken = async (token) => {
+  try {
+    if (!token) return await AsyncStorage.removeItem(loginTokenKey);
+    await AsyncStorage.setItem(loginTokenKey, JSON.stringify(token));
+  } catch (e) {
+    // saving error
+    console.log("failed", e)
+  }
+};
+
+const loadLoginToken = async () => {
+  try {
+    const loginToken = await AsyncStorage.getItem(loginTokenKey);
+    if (loginToken == null) return null;
+    const token = JSON.parse(loginToken);
+    // TODO validate token still valid here.
+    return token;
+  } catch (e) {
+    // retrieving error
+    console.log("failed", e)
+  }
+};
