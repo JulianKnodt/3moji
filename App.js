@@ -7,6 +7,8 @@ import { styles } from './styles';
 import * as Crypto from 'expo-crypto';
 import * as Queries from './queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+
 
 const serverURL = "https://api-3moji.herokuapp.com/";
 const loginTokenKey = "@3moji-login-token";
@@ -57,6 +59,31 @@ const MainApp = () => {
   const [users, setUsers] = useState([]);
   const [loginToken, setLoginToken] = useState(null);
   const [currentView,setCurrentView] = useState(views.Splash);
+  const [location, setLocation] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  
+  const getLocation = async() =>{
+    try{
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({accuracy:3});
+      const geo = await Location.reverseGeocodeAsync(location.coords);
+      setLocation(geo);
+    } catch(e){
+      if(e.message == "Location provider is unavailable. Make sure that location services are enabled."){
+        getLocation();
+      }
+    }
+    
+    
+  }
+  useEffect(() => {
+    getLocation();
+  }, []);
 
   useEffect(() => {
     loadLoginToken().then(token => {
@@ -83,7 +110,8 @@ const MainApp = () => {
     const group = await Queries.getGroups(loginToken);
     if (group == null || group.groups == null) {
       setGroups([]);
-    } else {
+    }else{
+      // console.log("groups",group.groups);
       setGroups(group.groups);
     }
     const joined = await Queries.getGroups(loginToken,50,Queries.listGroupKind.joinedGroups);
@@ -259,7 +287,8 @@ const MainApp = () => {
       <View style={styles.button}>
         <Button
           title="✉️🥺❓"
-          onPress={() => gotoView(views.SendMsg)}
+          onPress={() => {
+            gotoView(views.SendMsg)}}
         />
 
       </View>
@@ -435,7 +464,11 @@ const MainApp = () => {
         <View key={group.uuid} style={styles.button}>
           <Button
             title={group.name}
-            onPress={()=>{
+            onPress={async ()=>{
+              console.log("group",group);
+              const resp = await Queries.joinGroup(loginToken,group.uuid);
+              console.log(resp)
+              getGroups();
               setMessaging(group);
               gotoView(views.DraftMsg);
           }}/>
