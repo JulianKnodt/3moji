@@ -6,6 +6,8 @@ import (
 	"math"
 	"net/http"
 	"time"
+
+	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
 func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
@@ -535,6 +537,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.Messages[msg.Uuid] = msg
+		var uuids []Uuid
 		switch req.RecipientKind {
 		case MsgGroup:
 			group, exists := s.Groups[req.To]
@@ -549,6 +552,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 					s.UserToMessages[userUuid] = map[Uuid]struct{}{}
 				}
 				s.UserToMessages[userUuid][msg.Uuid] = struct{}{}
+				uuids = append(uuids, userUuid)
 			}
 		case MsgFriend:
 			user, exists := s.Users[req.To]
@@ -562,9 +566,101 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				s.UserToMessages[req.To] = map[Uuid]struct{}{}
 			}
 			s.UserToMessages[req.To][msg.Uuid] = struct{}{}
+			uuids = []Uuid{req.To}
+		default:
+			w.WriteHeader(404)
+			fmt.Fprint(w, "Unknown recipient kind")
+			return
 		}
 
 		go s.LogEmojiContent(msg.Emojis, msg.LocalTime)
+		go func(uuids []Uuid, name string, emojis EmojiContent, location string) {
+			var to []expo.ExponentPushToken
+			s.mu.Lock()
+			for _, uuid := range uuids {
+				notifToken, exists := s.UserNotificationTokens[uuid]
+				if !exists {
+					continue
+				}
+				to = append(to, notifToken)
+			}
+			s.mu.Unlock()
+			if len(to) == 0 {
+				return
+			}
+			var pushBody string
+			if msg.Location == "" {
+				pushBody = fmt.Sprintf("%s: %s❓", name, emojis)
+			} else {
+				pushBody = fmt.Sprintf("%s: %s❓ @ %s", name, emojis, location)
+			}
+			pushMsg := expo.PushMessage{
+				To:   to,
+				Body: pushBody,
+				//Data: map[string]string{"withSome": "data"},
+				Sound:    "default",
+				Title:    "📨‼️",
+				Priority: expo.DefaultPriority,
+			}
+			client := expo.NewPushClient(nil)
+			resp, err := client.Publish(&pushMsg)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if resp.ValidateResponse() != nil {
+				fmt.Println("Failed to send push notification")
+			}
+		}(uuids, user.Name, msg.Emojis, msg.Location)
+
+		w.WriteHeader(200)
+		return
+	}
+}
+
+func (s *Server) AddPushNotifTokenHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Not a post request")
+			return
+		}
+		var req AddPushNotifTokenRequest
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		if err := dec.Decode(&req); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error decoding request: %v", err)
+			return
+		}
+		if req.Token == "" {
+			w.WriteHeader(401)
+			fmt.Fprint(w, "Cannot send empty notification token")
+			return
+		}
+		token := req.LoginToken
+		if err := s.ValidateLoginToken(token); err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error validating login token: %v", err)
+			return
+		}
+
+		user, exists := s.UserFor(token)
+		if !exists {
+			w.WriteHeader(401)
+			fmt.Fprint(w, "User does not exist")
+			return
+		}
+
+		expoToken, err := expo.NewExponentPushToken(req.Token)
+		if err != nil {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "Error parsing expo token: %v", err)
+			return
+		}
+
+		s.mu.Lock()
+		s.UserNotificationTokens[user.Uuid] = expoToken
+		s.mu.Unlock()
 
 		w.WriteHeader(200)
 		return

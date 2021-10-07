@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 	// TODO add boltdb for persistence
+
+	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
 func main() {
@@ -50,6 +52,9 @@ type Server struct {
 
 	//EmojiSendCounts *expvar.Map
 	EmojiSendTime map[EmojiContent]float64
+
+	// ExpoNotificationTokens for sending push notifications
+	UserNotificationTokens map[Uuid]expo.ExponentPushToken
 }
 
 func NewServer() *Server {
@@ -73,6 +78,8 @@ func NewServer() *Server {
 
 		//EmojiSendCounts: expvar.NewMap("EmojiSendCounts"),
 		EmojiSendTime: map[EmojiContent]float64{},
+
+		UserNotificationTokens: map[Uuid]expo.ExponentPushToken{},
 	}
 }
 
@@ -92,6 +99,8 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/ack_msg/", srv.AckMsgHandler())
 
 	mux.HandleFunc("/api/v1/recs/", srv.RecommendationHandler())
+
+	mux.HandleFunc("/api/v1/add_push_token/", srv.AddPushNotifTokenHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
@@ -174,7 +183,7 @@ func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, erro
 	}
 
 	loginToken := LoginToken{
-		ValidUntil: time.Now().Add(72 * time.Hour).Unix(),
+		ValidUntil: time.Now().Add(5 * 24 * time.Hour).Unix(),
 		Uuid:       uuid,
 		UserEmail:  userEmail,
 	}
@@ -196,7 +205,11 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 		return fmt.Errorf("Tokens do not match want: %v, got: %v", existingToken, token)
 	}
 	if existingToken.Expired() {
-		return fmt.Errorf("Token has expired")
+		return fmt.Errorf(
+			"Token has expired, was valid until %v & is now %v",
+			time.Unix(existingToken.ValidUntil, 0),
+			time.Now(),
+		)
 	}
 	return nil
 }

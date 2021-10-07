@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	//"crypto/aes"
-	//"crypto/cipher"
 	"encoding/binary"
 	"fmt"
 	"net/mail"
@@ -72,10 +70,10 @@ type Message struct {
 	Source   User         `json:"source"`
 	Location string       `json:"location"`
 	// Unix timestamp for current time.
-	SentAt int64 `json:"sentAt"`
+	SentAt int64 `json:"sentAt,string"`
 
 	// 0-24 for the hour the message is sent at.
-	LocalTime float64 `json:"localTime"`
+	LocalTime float64 `json:"localTime,string"`
 }
 
 func (m *Message) Expired(now time.Time) bool {
@@ -91,12 +89,12 @@ type MessageReply struct {
 	Reply           EmojiReply   `json:"reply"`
 	From            User         `json:"from"`
 	// Unix timestamp
-	SentAt int64 `json:"sentAt"`
+	SentAt int64 `json:"sentAt,string"`
 }
 
 type LoginToken struct {
 	// Unix Timestamp
-	ValidUntil int64 `json:"validUntil"`
+	ValidUntil int64 `json:"validUntil,string"`
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
 	Uuid Uuid `json:"uuid,string"`
@@ -105,7 +103,7 @@ type LoginToken struct {
 }
 
 func (lt *LoginToken) Expired() bool {
-	return time.Unix(lt.ValidUntil, 0).After(time.Now())
+	return time.Unix(lt.ValidUntil, 0).Before(time.Now())
 }
 
 // Uuid represents a unique identifier, temporary for now but maybe upgrade to [2]uint64

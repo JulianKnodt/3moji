@@ -137,3 +137,8 @@ type RecommendationRequest struct {
 type RecommendationResponse struct {
 	Recommendations []EmojiContent `json:"recommendations"`
 }
+
+type AddPushNotifTokenRequest struct {
+	Token      string     `json:"token"`
+	LoginToken LoginToken `json:"loginToken"`
+}
