@@ -1,4 +1,4 @@
-import { StatusBar } from 'expo-status-bar';
+  import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 import EmojiBoard from 'react-native-emoji-board';
@@ -326,65 +326,6 @@ const MainApp = () => {
     </View>
   };
 
-  const DraftMsg = () => {
-    const [emojis, setEmoji] = useState("");
-    const [emojiError, setEmojiError] = useState("");
-    const [loc, setLoc] = useState("");
-
-    const sendEmoji = async() => {
-      if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
-      const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
-      if (resp instanceof Queries.Error) {
-        alert(resp.msg);
-      } else back();
-    }
-
-    const onClick = emoji => {
-      if (emojis.length >= 6)setEmojiError("You can only add three emojis");
-      else {
-        setEmoji(emojis + emoji.code);
-        setEmojiError("");
-      }
-    };
-
-    const onRemove = () => {
-      if (emojis.length > 0) {
-        setEmoji(emojis.substring(0, emojis.length - 2));
-      } else if(emojis.length <= 6) setEmojiError("");
-    }
-    return <View style={styles.container}>
-      <Text>Sending message to {messaging.name}</Text>
-      <Pressable onPress={() => setShow(!show)}>
-          <Text>{displayEmoji(emojis)}</Text>
-      </Pressable>
-      <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
-      {emojiError !== "" && <Text>{emojiError}</Text>}
-      <View style={styles.button}>
-        <Button title="Send" onPress={sendEmoji}/>
-      </View>
-      <View style={styles.fatButton}>
-        <Button title={`🗺📍 ${loc || "___"}`} onPress={async () => {
-          const l = await getLoc();
-          if (!l || l.length == 0) return alert("Could not get location!")
-          setLoc(`${l[0].name}, ${l[0].street}`)
-        }}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Leave Group" color="#b81010" onPress={async () => {
-          console.log("Here")
-          const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
-          if (resp instanceof Queries.Error) {
-            return alert(resp.msg);
-          }
-          getGroups();
-          gotoView(views.SendMsg);
-        }}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
-    </View>
-  };
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
@@ -489,7 +430,13 @@ const MainApp = () => {
   else if (currentView == views.Home) return <Home/>;
   else if (currentView == views.SendMsg) return <SendMsg/>;
   else if (currentView == views.RecvMsg) return <AckMsg/>;
-  else if (currentView == views.DraftMsg) return <DraftMsg/>;
+  else if (currentView == views.DraftMsg) return <DraftMsg
+    messaging={messaging}
+    gotoView={gotoView}
+    getGroups={getGroups}
+    loginToken={loginToken}
+    back={back}
+  />;
   else if (currentView == views.AddFriend) return <AddFriend/>;
   else if (currentView == views.AddGroup) return <AddGroup/>;
   else if (currentView == views.CreateGroup) return <CreateGroup/>;
@@ -519,4 +466,66 @@ const loadLoginToken = async () => {
     // retrieving error
     console.log("failed", e)
   }
+};
+
+const DraftMsg = props => {
+  const { messaging, getGroups, gotoView, back, loginToken} = props;
+  const [emojis, setEmoji] = useState("");
+  const [emojiError, setEmojiError] = useState("");
+  const [loc, setLoc] = useState("");
+  const [show, setShow] = useState(false);
+
+  const sendEmoji = async() => {
+    if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
+    const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
+    if (resp instanceof Queries.Error) {
+      alert(resp.msg);
+    } else back();
+  }
+
+  const onClick = emoji => {
+    if (emojis.length >= 6) setEmojiError("You can only add three emojis");
+    else {
+      setEmoji(emojis + emoji.code);
+      setEmojiError("");
+    }
+
+    if (emojis.length == 6) setShow(false);
+  };
+
+  const onRemove = () => {
+    if (emojis.length > 0) setEmoji(emojis.substring(0, emojis.length - 2));
+    else if(emojis.length <= 6) setEmojiError("");
+  }
+  return <View style={styles.container}>
+    <Text>Sending message to {messaging.name}</Text>
+    <Pressable onPress={() => setShow(!show)}>
+        <Text>{displayEmoji(emojis)}</Text>
+    </Pressable>
+    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
+    {emojiError !== "" && <Text>{emojiError}</Text>}
+    <View style={styles.button}>
+      <Button title="Send" onPress={sendEmoji}/>
+    </View>
+    <View style={styles.fatButton}>
+      <Button title={`🗺📍 ${loc || "___"}`} onPress={async () => {
+        const l = await getLoc();
+        if (!l || l.length == 0) return alert("Could not get location!")
+        setLoc(`${l[0].name}, ${l[0].street}`)
+      }}/>
+    </View>
+    <View style={styles.button}>
+      <Button title="Leave Group" color="#b81010" onPress={async () => {
+        const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
+        if (resp instanceof Queries.Error) {
+          return alert(resp.msg);
+        }
+        getGroups();
+        gotoView(views.SendMsg);
+      }}/>
+    </View>
+    <View style={styles.button}>
+      <Button title="Back" color="#f194ff" onPress={back}/>
+    </View>
+  </View>
 };
