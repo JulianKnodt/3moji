@@ -65,7 +65,8 @@ type Message struct {
 	// Messages Uuid
 	Uuid Uuid `json:"uuid,string"`
 	// Name of who this was sent to
-	SentTo   string       `json:"sentTo"`
+	SentTo string `json:"sentTo"`
+
 	Emojis   EmojiContent `json:"emojis"`
 	Source   User         `json:"source"`
 	Location string       `json:"location"`

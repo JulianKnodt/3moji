@@ -74,7 +74,7 @@ const MainApp = () => {
       if (token == null) return
       setLoginToken(token);
       setCurrentView(views.Home);
-      Queries.recvMsg(loginToken).then(resp => {
+      Queries.recvMsg(token).then(resp => {
         console.log(resp);
       });
     });
@@ -469,7 +469,7 @@ const loadLoginToken = async () => {
 };
 
 const DraftMsg = props => {
-  const { messaging, getGroups, gotoView, back, loginToken} = props;
+  const { messaging, getGroups, gotoView, back, loginToken } = props;
   const [emojis, setEmoji] = useState("");
   const [emojiError, setEmojiError] = useState("");
   const [loc, setLoc] = useState("");
@@ -508,10 +508,12 @@ const DraftMsg = props => {
       <Button title="Send" onPress={sendEmoji}/>
     </View>
     <View style={styles.fatButton}>
-      <Button title={`🗺📍 ${loc || "___"}`} onPress={async () => {
+      <Button title={`➕🗺📍 ${loc || "___"}`} onPress={async () => {
         const l = await getLoc();
+        console.log(l);
         if (!l || l.length == 0) return alert("Could not get location!")
-        setLoc(`${l[0].name}, ${l[0].street}`)
+        const locString = l[0].street ? `${l[0].name}, ${l[0].street}` : `${l[0].name}`;
+        setLoc(locString);
       }}/>
     </View>
     <View style={styles.button}>
