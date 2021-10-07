@@ -16,6 +16,18 @@ const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
   return emojis + dashs.slice(emojis.length).join(" ");
 };
+const getLoc = async() =>{
+  try{
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const loc = await Location.getCurrentPositionAsync({accuracy:3});
+    return Location.reverseGeocodeAsync(loc.coords);
+  } catch(e){
+    if(e.message == "Location provider is unavailable. Make sure that location services are enabled."){
+      getLoc();
+    }
+  }
+}
 
 const MainApp = () => {
   const [user,setUser] = useState({});
@@ -317,59 +329,62 @@ const MainApp = () => {
   const DraftMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
+    const [loc, setLoc] = useState("");
 
     const sendEmoji = async() => {
-      if (emojis.length != 6) {
-        setEmojiError("You need to send exactly three emojis");
-        return;
-      }
-      const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid);
+      if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
+      const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
       if (resp instanceof Queries.Error) {
         alert(resp.msg);
       } else back();
     }
 
     const onClick = emoji => {
-      if (emojis.length >= 6){
-        setEmojiError("You can only add three emojis");
-      }else{
+      if (emojis.length >= 6)setEmojiError("You can only add three emojis");
+      else {
         setEmoji(emojis + emoji.code);
         setEmojiError("");
       }
     };
 
     const onRemove = () => {
-      if(emojis.length > 0){
+      if (emojis.length > 0) {
         setEmoji(emojis.substring(0, emojis.length - 2));
-      }
-      if(emojis.length <= 6){
-        setEmojiError("");
-      }
+      } else if(emojis.length <= 6) setEmojiError("");
     }
     return <View style={styles.container}>
-    <Text>Sending message to {messaging.name}</Text>
-    <Pressable onPress={() => setShow(!show)}>
-        <Text>{displayEmoji(emojis)}</Text>
-    </Pressable>
-    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
-    {emojiError !== "" && <Text>{emojiError}</Text>}
-    <View style={styles.button}>
-      <Button title="Send" onPress={sendEmoji}/>
+      <Text>Sending message to {messaging.name}</Text>
+      <Pressable onPress={() => setShow(!show)}>
+          <Text>{displayEmoji(emojis)}</Text>
+      </Pressable>
+      <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
+      {emojiError !== "" && <Text>{emojiError}</Text>}
+      <View style={styles.button}>
+        <Button title="Send" onPress={sendEmoji}/>
+      </View>
+      <View style={styles.fatButton}>
+        <Button title={`🗺📍 ${loc || "___"}`} onPress={async () => {
+          const l = await getLoc();
+          if (!l || l.length == 0) return alert("Could not get location!")
+          setLoc(`${l[0].name}, ${l[0].street}`)
+        }}/>
+      </View>
+      <View style={styles.button}>
+        <Button title="Leave Group" color="#b81010" onPress={async () => {
+          console.log("Here")
+          const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
+          if (resp instanceof Queries.Error) {
+            return alert(resp.msg);
+          }
+          getGroups();
+          gotoView(views.SendMsg);
+        }}/>
+      </View>
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
+      </View>
     </View>
-    <View style={styles.button}>
-      <Button title="Leave Group" color="#b81010" onPress={async()=>{
-        const resp = await Queries.leaveGroup(loginToken, messaging.uuid);
-        if (resp instanceof Queries.Error) {
-          return alert(resp.msg);
-        }
-        getGroups();
-        gotoView(views.SendMsg);
-      }}/>
-    </View>
-    <View style={styles.button}>
-      <Button title="Back" color="#f194ff" onPress={back}/>
-    </View>
-  </View>};
+  };
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");

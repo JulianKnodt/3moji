@@ -40,6 +40,10 @@ export const styles = StyleSheet.create({
       width: '50%',
       padding: 10,
     },
+    fatButton: {
+      width: '90%',
+      padding: 5,
+    },
     friendList:{
       width: '100%',
       borderBottomColor: 'grey',

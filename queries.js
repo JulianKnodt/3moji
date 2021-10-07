@@ -80,16 +80,16 @@ const localTime = () => {
   return localTime;
 };
 
-export const sendMsg = async (loginToken, emojis, dstUuid, toGroup=true) => {
+export const sendMsg = async (loginToken, emojis, dstUuid, loc="", toGroup=true) => {
   const recipientKind = toGroup ? 0 : 1;
   // TODO message is not just a string but a complex object.
   const message = {
     uuid: loginToken.uuid,
     emojis: emojis,
     // source will be populated on the server.
-    location: "",
-    sentAt: Date.now(),
-    localTime: localTime(),
+    location: loc,
+    sentAt: Date.now().toString(),
+    localTime: localTime().toString(),
   };
   const req = { message, loginToken, recipientKind, to: dstUuid };
   const resp = await fetch(serverURL + "api/v1/send_msg/", {
