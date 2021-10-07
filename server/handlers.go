@@ -411,33 +411,37 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 		var resp RecommendationResponse
 		switch int(math.Round(req.LocalTime)) % 24 {
 		case 6, 7, 8, 9:
-			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+			resp.Recommendations = []EmojiContent{
 				"🥞🍳🥓",
 				"🫖'🥐🌅",
 				"🏃🌄🚲",
 				"💪🤸💪",
-			}...)
+			}
 		case 12, 13:
-			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+			resp.Recommendations = []EmojiContent{
 				"🍕🍔🌯",
 				"🥗🥙🍲",
 				"🍱🍚🍛",
-			}...)
+			}
 		case 16, 17:
-			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+			resp.Recommendations = []EmojiContent{
 				"🏀🎾🏐",
 				"🎥🕴🎦",
-			}...)
+			}
 		case 21, 22:
-			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+			resp.Recommendations = []EmojiContent{
 				"🍷🎉🍹",
 				"🍰🍦🧋'",
-			}...)
+			}
 		case 23, 0, 1:
-			resp.Recommendations = append(resp.Recommendations, []EmojiContent{
+			resp.Recommendations = []EmojiContent{
 				"🌌🚶🌃",
-			}...)
+			}
 		}
+		resp.Recommendations = append(
+			resp.Recommendations,
+			s.FindNearRecommendations(5, req.LocalTime)...,
+		)
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
 		return
@@ -559,6 +563,8 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			}
 			s.UserToMessages[req.To][msg.Uuid] = struct{}{}
 		}
+
+		go s.LogEmojiContent(msg.Emojis, msg.LocalTime)
 
 		w.WriteHeader(200)
 		return

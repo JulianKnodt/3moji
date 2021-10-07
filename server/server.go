@@ -48,8 +48,8 @@ type Server struct {
 	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]MessageReply
 
-	EmojiSendCounts *expvar.Map
-	EmojiSendHours  *expvar.Map
+	//EmojiSendCounts *expvar.Map
+	EmojiSendTime map[EmojiContent]float64
 }
 
 func NewServer() *Server {
@@ -72,7 +72,7 @@ func NewServer() *Server {
 		Replies:       map[Uuid]MessageReply{},
 
 		//EmojiSendCounts: expvar.NewMap("EmojiSendCounts"),
-		//EmojiSendHours:  expvar.NewMap("EmojiSendLocalHour"),
+		EmojiSendTime: map[EmojiContent]float64{},
 	}
 }
 
@@ -235,18 +235,44 @@ func weightedAverage(old, newVal, alpha float64) float64 {
 	return old*(1-alpha) + newVal*alpha
 }
 
-func (s *Server) LogEmojiContent(e EmojiContent, localHour float64) {
+func distance(u1, u2, v1, v2 float64) float64 {
+	du := u1 - u2
+	dv := v1 - v2
+	return du*du + dv*dv
+}
+
+func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	// increment count
-	emojiString := string(e[:])
-	s.EmojiSendCounts.Add(emojiString, 1)
+	// s.EmojiSendCounts.Add(emojiString, 1)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prevTime, exists := s.EmojiSendTime[e]
+	if !exists {
+		s.EmojiSendTime[e] = localTime
+		return
+	}
+	oldU, oldV := to2DTimeModular(prevTime)
+	newU, newV := to2DTimeModular(localTime)
+	u := weightedAverage(oldU, newU, 0.01)
+	v := weightedAverage(oldV, newV, 0.01)
+	s.EmojiSendTime[e] = from2DTimeModular(u, v)
+}
 
-	oldValX := s.EmojiSendHours.Get(emojiString + "x").(*expvar.Float)
-	oldValY := s.EmojiSendHours.Get(emojiString + "y").(*expvar.Float)
-	newX, newY := to2DTimeModular(localHour)
-	u := weightedAverage(oldValX.Value(), newX, 0.01)
-	v := weightedAverage(oldValY.Value(), newY, 0.01)
-	oldValX.Set(u)
-	oldValY.Set(v)
-
-	s.EmojiSendHours.Get(emojiString).(*expvar.Float).Set(from2DTimeModular(u, v))
+// TODO weight the recommendations with how frequently they are sent.
+func (s *Server) FindNearRecommendations(amt int, localTime float64) []EmojiContent {
+	u, v := to2DTimeModular(localTime)
+	out := make([]EmojiContent, 0, amt)
+	s.mu.Lock()
+	for cntnt, t := range s.EmojiSendTime {
+		newU, newV := to2DTimeModular(t)
+		dist := distance(u, newU, v, newV)
+		if dist < 0.05 {
+			out = append(out, cntnt)
+			if len(out) == amt {
+				break
+			}
+		}
+	}
+	s.mu.Unlock()
+	return out
 }
