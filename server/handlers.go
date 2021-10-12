@@ -197,7 +197,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		dec.UseNumber()
 		if err := dec.Decode(&req); err != nil {
 			w.WriteHeader(401)
-			fmt.Fprintf(w, "Error decoding recv message %v", err)
+			fmt.Fprintf(w, "Error decoding ack message %v", err)
 			return
 		}
 		token := req.LoginToken
@@ -282,6 +282,9 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				return
 			}
 			s.Groups[req.GroupUuid].Users[user.Uuid] = struct{}{}
+			if _, exists := s.UsersToGroups[user.Uuid]; !exists {
+				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
+			}
 			s.UsersToGroups[user.Uuid][req.GroupUuid] = struct{}{}
 		case LeaveGroup:
 			if _, exists := s.Groups[req.GroupUuid]; !exists {
@@ -429,6 +432,12 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 			resp.Recommendations = []EmojiContent{
 				"🏀🎾🏐",
 				"🎥🕴🎦",
+			}
+		case 18, 19:
+			resp.Recommendations = []EmojiContent{
+				"🍕🍔🌯",
+				"🥗🥙🍲",
+				"🍱🍚🍛",
 			}
 		case 21, 22:
 			resp.Recommendations = []EmojiContent{
