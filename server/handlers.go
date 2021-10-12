@@ -233,7 +233,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		}
 		// TODO check for collisions?
 		s.Replies[replyUuid] = MessageReply{
-			Message:         req.MsgID,
+			Message:         originalMessage,
 			OriginalContent: originalMessage.Emojis,
 			Reply:           req.Reply,
 			From:            *user,
@@ -534,7 +534,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			return
 		}
 
-		msg := req.Message
+		msg := &req.Message
 		msg.Source = *user
 		var err error
 		if msg.Uuid, err = generateUuid(); err != nil {

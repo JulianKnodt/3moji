@@ -72,6 +72,8 @@ type Message struct {
 	Location string       `json:"location"`
 	// Unix timestamp for current time.
 	SentAt int64 `json:"sentAt,string"`
+	// number of seconds for this message to live (time to live)
+	TTL int64 `json:"ttl,string"`
 
 	// 0-24 for the hour the message is sent at.
 	LocalTime float64 `json:"localTime,string"`
@@ -79,11 +81,11 @@ type Message struct {
 
 func (m *Message) Expired(now time.Time) bool {
 	t := time.Unix(m.SentAt, 0)
-	return t.Add(time.Hour).Before(now)
+	return t.Add(time.Duration(m.TTL) * time.Second).Before(now)
 }
 
 type MessageReply struct {
-	Message Uuid `json:"message,string"`
+	Message *Message `json:"message"`
 
 	// This is so the user can see what they originally sent
 	OriginalContent EmojiContent `json:"originalContent"`

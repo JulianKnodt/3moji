@@ -36,8 +36,7 @@ type Server struct {
 
 	// In-memory map of recipient to Messages
 	UserToMessages map[Uuid]map[Uuid]struct{}
-	// TODO add a timer so that these will eventually expire or be cleaned up periodically.
-	Messages map[Uuid]Message
+	Messages       map[Uuid]*Message
 
 	Users map[Uuid]*User
 	// List of friends for a given user: user -> their friends
@@ -65,7 +64,7 @@ func NewServer() *Server {
 		HashedPasswords: map[Uuid]string{},
 
 		UserToMessages: map[Uuid]map[Uuid]struct{}{},
-		Messages:       map[Uuid]Message{},
+		Messages:       map[Uuid]*Message{},
 
 		Groups:        map[Uuid]Group{},
 		UsersToGroups: map[Uuid]map[Uuid]struct{}{},
@@ -116,6 +115,22 @@ func (srv *Server) Serve(addr string) error {
 }
 
 // Cleanup will remove any old messages or replies which have not been acknowledged.
+func (s *Server) Cleanup() {
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for uuid, message := range s.Messages {
+		if message.Expired(now) {
+			delete(s.Messages, uuid)
+		}
+	}
+	for uuid, reply := range s.Replies {
+		if _, exists := s.Messages[reply.Message.Uuid]; !exists {
+			delete(s.Replies, uuid)
+		}
+	}
+}
+
 /*
 func (s *Server) Cleanup() {
   var i int
@@ -224,8 +239,8 @@ func (s *Server) UserFor(token LoginToken) (*User, bool) {
 }
 
 // s.mu should be held when called.
-func (s *Server) MessageForReplyLocked(reply MessageReply) (Message, bool) {
-	msg, exists := s.Messages[reply.Message]
+func (s *Server) MessageForReplyLocked(reply MessageReply) (*Message, bool) {
+	msg, exists := s.Messages[reply.Message.Uuid]
 	return msg, exists
 }
 

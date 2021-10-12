@@ -35,7 +35,7 @@ type RecvMsgRequest struct {
 
 type RecvMsgResponse struct {
 	// New messages the user has not seen
-	NewMessages []Message `json:"newMessages"`
+	NewMessages []*Message `json:"newMessages"`
 	// TODO need to add in who replied here
 	NewReplies []MessageReply `json:"newReplies"`
 }
