@@ -392,7 +392,7 @@ const MainApp = () => {
 
       ))}
       <View style={styles.button}>
-        <Button title="🆕👨‍👩‍👧‍👦📨" onPress={()=>{gotoView(views.CreateGroup)}}/>
+        <Button title="🆕👥📨" onPress={()=>{gotoView(views.CreateGroup)}}/>
       </View>
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
