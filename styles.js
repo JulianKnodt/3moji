@@ -39,6 +39,7 @@ export const styles = StyleSheet.create({
     button: {
       width: '50%',
       padding: 10,
+      
     },
     fatButton: {
       width: '90%',

@@ -108,10 +108,11 @@ export const recvMsg = async (loginToken) => {
 
 export const ackMsg = async (msgID, reply, loginToken) => {
   const req = { msgID, reply, loginToken };
+  console.log("reply",msgID,reply);
   const resp = await fetch(serverURL + "api/v1/ack_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
-  return handleResp(resp);
+  return handleResp(resp,true);
 };
 
 export const recommendations = async () => {

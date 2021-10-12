@@ -38,7 +38,7 @@ const MainApp = () => {
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
-  const [show, setShow] = useState(false);
+  
 
   const [password, setPassword] = useState("");
   const [users, setUsers] = useState([]);
@@ -329,29 +329,60 @@ const MainApp = () => {
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
+    const [messages, setMessages] = useState([]);
+    const [replies, setReplies] = useState([]);
+    const [message, setMessage] = useState({});
+    const [show, setShow] = useState(false);
+    useEffect(() => {
+      const fetchMessage = async() =>{
+        const resp = await Queries.recvMsg(loginToken);
+        setMessages(resp.newMessages || []);
+        setReplies(resp.newReplies || []);
+        console.log("resp??",resp);
+      }
+      fetchMessage();
+    }, []);
+
+    const replyMessage = async(message,reply) => {
+      console.log(message);
+      const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
+      console.log("reply resp",resp);
+    }
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
-    {invites.map((invite,i)=>(
+    {messages.map((message,i)=>(
         <View key={i} style={styles.inviteContainer}>
-          <Text style={styles.inviteText}>{invite.name}: {invite.message}?</Text>
+          <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
           <View style={styles.reactContainer}>
             <View style={styles.inviteButton}>
-              <Button title="👍" onPress={()=>{}}/>
+              <Button title="👍" onPress={()=>{
+                replyMessage(message,"👍");
+                }}/>
             </View>
             <View style={styles.inviteButton}>
-              <Button title="👎" onPress={()=>{}}/>
+              <Button title="👎" onPress={()=>{
+                replyMessage(message,"👎")
+                }}/>
             </View>
             <View style={styles.inviteButton}>
-              <Button title="➕" onPress={()=>{setShow(!show)}}/>
+              <Button title="➕" onPress={()=>{
+                setMessage(message);
+                setShow(!show);
+              }}/>
             </View>
           </View>
         </View>
     ))}
+    {/* {replies.map(()=>(
+      <View key={i} style={styles.inviteContainer}> 
+      <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+      </View>
+    ))} */}
     {/* </View> */}
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-    <EmojiBoard showBoard={show} onClick={(emoji)=>{}}/>
+    <EmojiBoard showBoard={show} onClick={(emoji)=>{replyMessage(message,uuid,emoji.code)}}/>
   </View>};
 
   const AddFriend = () => {
@@ -474,6 +505,16 @@ const DraftMsg = props => {
   const [emojiError, setEmojiError] = useState("");
   const [loc, setLoc] = useState("");
   const [show, setShow] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+
+  useEffect(() => {
+    const fetchMessage = async() =>{
+      const resp = await Queries.recommendations();
+      console.log(resp.recommendations);
+      setRecommendations(resp.recommendations || []);
+    }
+    fetchMessage();
+  }, []);
 
   const sendEmoji = async() => {
     if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
@@ -497,6 +538,8 @@ const DraftMsg = props => {
     if (emojis.length > 0) setEmoji(emojis.substring(0, emojis.length - 2));
     else if(emojis.length <= 6) setEmojiError("");
   }
+
+
   return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Pressable onPress={() => setShow(!show)}>
@@ -507,15 +550,26 @@ const DraftMsg = props => {
     <View style={styles.button}>
       <Button title="Send" onPress={sendEmoji}/>
     </View>
-    <View style={styles.fatButton}>
-      <Button title={`➕🗺📍 ${loc || "___"}`} onPress={async () => {
+    <View style={styles.button}>
+      {loc ? <Text>{loc}</Text> : null}
+      <Button title={`${loc ? "➖" : "➕"}🗺📍`} onPress={async () => {
+        if(loc){
+          setLoc("")
+          return;
+        }
         const l = await getLoc();
         console.log(l);
         if (!l || l.length == 0) return alert("Could not get location!")
         const locString = l[0].street ? `${l[0].name}, ${l[0].street}` : `${l[0].name}`;
         setLoc(locString);
       }}/>
+      
     </View>
+    {recommendations.map((recommendation,i)=>(
+      <View key={i} style={styles.button}>
+        <Button title={recommendation} color="#5ac18e" onPress={()=>{setEmoji(recommendation)}}></Button>
+      </View>
+    ))}
     <View style={styles.button}>
       <Button title="Leave Group" color="#b81010" onPress={async () => {
         const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
