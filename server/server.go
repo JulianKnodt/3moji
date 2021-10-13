@@ -13,6 +13,11 @@ import (
 	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
+var (
+	emojisSentAt    = expvar.NewMap("emojisSentAt")
+	emojisSentCount = expvar.NewMap("emojisSentCount")
+)
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -271,7 +276,8 @@ func distance(u1, u2, v1, v2 float64) float64 {
 
 func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	// increment count
-	// s.EmojiSendCounts.Add(emojiString, 1)
+	emojisSentCount.Add(string(e), 1)
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	prevTime, exists := s.EmojiSendTime[e]
@@ -283,7 +289,9 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	newU, newV := to2DTimeModular(localTime)
 	u := weightedAverage(oldU, newU, 0.01)
 	v := weightedAverage(oldV, newV, 0.01)
-	s.EmojiSendTime[e] = from2DTimeModular(u, v)
+	newTime := from2DTimeModular(u, v)
+	s.EmojiSendTime[e] = newTime
+	emojisSentAt.Get(string(e)).(*expvar.Float).Set(newTime)
 }
 
 // TODO weight the recommendations with how frequently they are sent.
