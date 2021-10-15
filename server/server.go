@@ -275,8 +275,9 @@ func distance(u1, u2, v1, v2 float64) float64 {
 }
 
 func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
+	emojiString := string(e)
 	// increment count
-	emojisSentCount.Add(string(e), 1)
+	emojisSentCount.Add(emojiString, 1)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -291,7 +292,12 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	v := weightedAverage(oldV, newV, 0.01)
 	newTime := from2DTimeModular(u, v)
 	s.EmojiSendTime[e] = newTime
-	emojisSentAt.Get(string(e)).(*expvar.Float).Set(newTime)
+	old := emojisSentAt.Get(emojiString)
+	if old == nil {
+		emojisSentAt.AddFloat(emojiString, newTime)
+	} else {
+		old.(*expvar.Float).Set(newTime)
+	}
 }
 
 // TODO weight the recommendations with how frequently they are sent.
