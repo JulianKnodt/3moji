@@ -11,3 +11,17 @@ export const views = {
   CreateGroup: "CreateGroup",
 };
 
+
+export const HeaderText = {
+  [views.Splash]: "",
+  [views.SignUp]: "",
+  [views.SignIn]: "",
+  [views.Home]: "🏠",
+  [views.SendMsg]: "",
+  [views.RecvMsg]: "",
+  [views.DraftMsg]: "✍️✉️",
+
+  [views.AddFriend]: "",
+  [views.AddGroup]: "",
+  [views.CreateGroup]: "➕👥",
+};

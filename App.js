@@ -2,7 +2,7 @@
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 import EmojiBoard from 'react-native-emoji-board';
-import { views } from './constants'
+import { views, HeaderText } from './constants'
 import { styles } from './styles';
 import * as Crypto from 'expo-crypto';
 import * as Queries from './queries';
@@ -16,6 +16,13 @@ const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
   return emojis + dashs.slice([...emojis].length).join(" ");
 };
+
+const isEmail = email => {
+  const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(email);
+}
+
+
 const getLoc = async() =>{
   try{
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -160,26 +167,11 @@ const MainApp = () => {
     const error = (() => {
       if (!email) return null
       if (email == "") return null;
-      if (!email.endsWith("princeton.edu")) {
-        return "Only accepting princeton emails currently.";
-      };
+      if (!isEmail(email)) return "Does not appear to be an email";
+      return null;
     })();
     setEmailError(error);
   }
-
-  const Splash = () => {
-    return <View style={styles.container}>
-      <Text>📭📩🙌!</Text>
-      <View style={styles.button}>
-        <Button title="Sign In" onPress={() => gotoView(views.SignIn)}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Sign Up" onPress={() => gotoView(views.SignUp)}/>
-      </View>
-      <StatusBar style="auto"/>
-    </View>
-
-  };
 
   // component for signing up for the app
   const SignUp = () => {
@@ -454,7 +446,7 @@ const MainApp = () => {
       </View>
     </View>
   };
-  if (currentView == views.Splash) return <Splash/>;
+  if (currentView == views.Splash) return <Splash gotoView={gotoView.bind(this)}/>;
   else if (currentView == views.SignUp) return <SignUp/>;
   else if (currentView == views.SignIn) return <SignIn/>;
   else if (currentView == views.Home) return <Home/>;
@@ -496,6 +488,19 @@ const loadLoginToken = async () => {
     // retrieving error
     console.log("failed", e)
   }
+};
+
+const Splash = props => {
+  return <View style={styles.container}>
+    <Text>📭📩🙌!</Text>
+    <View style={styles.button}>
+      <Button title="Sign In" onPress={() => props.gotoView(views.SignIn)}/>
+    </View>
+    <View style={styles.button}>
+      <Button title="Sign Up" onPress={() => props.gotoView(views.SignUp)}/>
+    </View>
+    <StatusBar style="auto"/>
+  </View>
 };
 
 const DraftMsg = props => {
@@ -562,7 +567,6 @@ const DraftMsg = props => {
         const locString = l[0].street ? `${l[0].name}, ${l[0].street}` : `${l[0].name}`;
         setLoc(locString);
       }}/>
-      
     </View>
     {recommendations.map((recommendation,i)=>(
       <View key={i} style={styles.button}>
@@ -584,3 +588,10 @@ const DraftMsg = props => {
     </View>
   </View>
 };
+
+const CommonHeader = props => <View>
+  <Header centerComponent={{
+    text: HeaderText[props.currentView],
+  }}/>
+  {props.children}
+</View>;
