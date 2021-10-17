@@ -14,7 +14,7 @@ const userKey = "@3moji-user";
 
 const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
-  return emojis + dashs.slice(emojis.length).join(" ");
+  return emojis + dashs.slice([...emojis].length).join(" ");
 };
 const getLoc = async() =>{
   try{
@@ -38,7 +38,6 @@ const MainApp = () => {
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
   const [stack, setStack] = useState([]);
-  
 
   const [password, setPassword] = useState("");
   const [users, setUsers] = useState([]);
@@ -55,7 +54,7 @@ const MainApp = () => {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({accuracy:3});
+      const location = await Location.getCurrentPositionAsync({accuracy:3});
       const geo = await Location.reverseGeocodeAsync(location.coords);
       setLocation(geo);
     } catch(e){
