@@ -1,4 +1,6 @@
 import * as Crypto from 'expo-crypto';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 const serverURL = "https://api-3moji.herokuapp.com/";
 const headers = {
@@ -147,12 +149,62 @@ export const login = async (email, password) => {
   return handleResp(resp);
 };
 
+export const notifTokenActionKind = {
+  add: 0,
+  rm: 1,
+};
+
+const granted = "granted";
+export const registerForPushNotifications = async loginToken => {
+  if (!Constants.isDevice) return alert('Must use physical device for Push Notifications');
+
+  const existingStatus = (await Notifications.getPermissionsAsync()).status;
+  let finalStatus = existingStatus;
+  if (existingStatus !== granted)
+    finalStatus = (await Notifications.requestPermissionsAsync()).status;
+
+  if (finalStatus !== granted) return alert('Failed to get push token for push notification!');
+  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  // just re-get token each time?
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+  const req = { token, loginToken, kind: notifTokenActionKind.add, };
+  const dst = serverURL + "api/v1/push_token/";
+  const resp = await fetch(dst, {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp, true);
+};
+
+export const unsubPushNotifications = async loginToken => {
+  const req = { token, loginToken, kind: notifTokenActionKind.rm, };
+  const dst = serverURL + "api/v1/push_token/";
+  const resp = await fetch(dst, {
+    method: 'POST', headers, body: JSON.stringify(req),
+  });
+  return handleResp(resp, true);
+};
+
 // current generic way to handle responses, returning null if there's an error which may be
 // turned into an alert.
 const handleResp = async (resp,ignoreResp = false) => {
-  if (resp.status != 200) {
-    return new Error(resp.status, await resp.text());
-  }
+  if (resp.status >= 300) return new Error(resp.status, await resp.text());
+
   if (ignoreResp) return null;
   return resp.json();
 };
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});

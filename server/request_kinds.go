@@ -138,7 +138,15 @@ type RecommendationResponse struct {
 	Recommendations []EmojiContent `json:"recommendations"`
 }
 
-type AddPushNotifTokenRequest struct {
-	Token      string     `json:"token"`
-	LoginToken LoginToken `json:"loginToken"`
+type NotifTokenActionKind int
+
+const (
+	AddNotifToken NotifTokenActionKind = iota
+	RmNotifToken
+)
+
+type PushNotifTokenRequest struct {
+	Kind       NotifTokenActionKind `json:"kind"`
+	Token      string               `json:"token"`
+	LoginToken LoginToken           `json:"loginToken"`
 }

@@ -4,10 +4,12 @@ import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-nati
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
 import { styles } from './styles';
+
 import * as Crypto from 'expo-crypto';
 import * as Queries from './queries';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const loginTokenKey = "@3moji-login-token";
 const userKey = "@3moji-user";
@@ -53,25 +55,8 @@ const MainApp = () => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const getLocation = async() =>{
-    try{
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({accuracy:3});
-      const geo = await Location.reverseGeocodeAsync(location.coords);
-      setLocation(geo);
-    } catch(e){
-      if(e.message == "Location provider is unavailable. Make sure that location services are enabled."){
-        getLocation();
-      }
-    }
-  }
   useEffect(() => {
-    getLocation();
+    setLocation(getLoc());
   }, []);
 
 
@@ -127,6 +112,10 @@ const MainApp = () => {
     if (loginToken == null) return;
     updateFriendsAndInvites();
     getGroups();
+    (async () => {
+      const pushNotifError = await Queries.registerForPushNotifications(loginToken);
+      if (pushNotifError !== null) alert(pushNotifError.msg);
+    })()
   }, [loginToken]);
 
   // TODO fetch friends and invites

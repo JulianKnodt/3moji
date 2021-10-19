@@ -104,7 +104,7 @@ func (srv *Server) Serve(addr string) error {
 
 	mux.HandleFunc("/api/v1/recs/", srv.RecommendationHandler())
 
-	mux.HandleFunc("/api/v1/add_push_token/", srv.AddPushNotifTokenHandler())
+	mux.HandleFunc("/api/v1/push_token/", srv.PushNotifTokenHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
