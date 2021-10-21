@@ -108,6 +108,7 @@ func (srv *Server) Serve(addr string) error {
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
+	go srv.Cleanup()
 	s := http.Server{
 		Addr:           addr,
 		Handler:        mux,
@@ -121,38 +122,23 @@ func (srv *Server) Serve(addr string) error {
 
 // Cleanup will remove any old messages or replies which have not been acknowledged.
 func (s *Server) Cleanup() {
-	now := time.Now()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for uuid, message := range s.Messages {
-		if message.Expired(now) {
-			delete(s.Messages, uuid)
+	t := time.NewTicker(5 * time.Minute)
+	for range t.C {
+		now := time.Now()
+		s.mu.Lock()
+		for uuid, message := range s.Messages {
+			if message.Expired(now) {
+				delete(s.Messages, uuid)
+			}
 		}
-	}
-	for uuid, reply := range s.Replies {
-		if _, exists := s.Messages[reply.Message.Uuid]; !exists {
-			delete(s.Replies, uuid)
+		for uuid, reply := range s.Replies {
+			if _, exists := s.Messages[reply.Message.Uuid]; !exists {
+				delete(s.Replies, uuid)
+			}
 		}
+		s.mu.Unlock()
 	}
 }
-
-/*
-func (s *Server) Cleanup() {
-  var i int
-  var v TimedObject
-  now := time.Now()
-  for i, v = range s.MessageTimers {
-    if v.ExpiresAt.After(now) {
-      break
-    }
-  }
-  expired := s.MessageTimes[:i]
-  s.MessageTimes = s.MessageTimes[i:]
-  for _, o := range expired {
-    delete(s.Messages, o.uuid)
-  }
-}
-*/
 
 func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string) (Uuid, error) {
 	s.mu.Lock()
