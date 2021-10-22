@@ -150,3 +150,10 @@ type PushNotifTokenRequest struct {
 	Token      string               `json:"token"`
 	LoginToken LoginToken           `json:"loginToken"`
 }
+
+type SummaryResponse struct {
+	// Counts of how frequently an emoji was sent
+	Counts map[string]int `json:"counts,string"`
+	// When an emoji was most frequently sent at
+	Times map[string]float64 `json:"times,string"`
+}

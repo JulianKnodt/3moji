@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	// TODO add boltdb for persistence
 
 	"github.com/go-redis/redis/v8"
 	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
@@ -48,11 +48,12 @@ type Server struct {
 	UserToMessages map[Uuid]map[Uuid]struct{}
 	//Messages       map[Uuid]*Message
 
-	Users map[Uuid]*User
+	// TODO this isn't really in use so it's okay that it gets reset
+	// Users map[Uuid]*User
 	// List of friends for a given user: user -> their friends
 	Friends map[Uuid]map[Uuid]struct{}
 
-	Groups        map[Uuid]Group
+	//  Groups        map[Uuid]Group
 	UsersToGroups map[Uuid]map[Uuid]struct{}
 
 	// Replies waiting for a given user
@@ -103,16 +104,15 @@ func NewServer() *Server {
 		UserToMessages: map[Uuid]map[Uuid]struct{}{},
 		//Messages:       map[Uuid]*Message{},
 
-		Groups:        map[Uuid]Group{},
+		// Groups:        map[Uuid]Group{},
 		UsersToGroups: map[Uuid]map[Uuid]struct{}{},
 
-		Users:   map[Uuid]*User{},
+		//Users:   map[Uuid]*User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
 
 		UserToReplies: map[Uuid][]Uuid{},
 		Replies:       map[Uuid]MessageReply{},
 
-		//EmojiSendCounts: expvar.NewMap("EmojiSendCounts"),
 		EmojiSendTime: map[EmojiContent]float64{},
 
 		UserNotificationTokens: map[Uuid]expo.ExponentPushToken{},
@@ -138,6 +138,8 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/recs/", srv.RecommendationHandler())
 
 	mux.HandleFunc("/api/v1/push_token/", srv.PushNotifTokenHandler())
+
+	mux.HandleFunc("/api/v1/summary/", srv.SummaryHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
@@ -179,6 +181,90 @@ func (s *Server) DeleteMessage(ctx context.Context, uuid Uuid) error {
 	return s.RedisClient.HDel(ctx, "messages", uuid.String()).Err()
 }
 
+func (s *Server) AddUser(ctx context.Context, user *User) error {
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	return s.RedisClient.HSet(ctx, "users", user.Uuid.String(), userJSON).Err()
+}
+
+func (s *Server) GetUser(ctx context.Context, uuid Uuid) (*User, error) {
+	userJSON, err := s.RedisClient.HGet(ctx, "users", uuid.String()).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if len(userJSON) == 0 {
+		return nil, nil
+	}
+	var user User
+	if err = json.Unmarshal(userJSON, &user); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal user: %v", err)
+	}
+	return &user, nil
+}
+
+func (s *Server) GetUsers(ctx context.Context) ([]User, error) {
+	userJSONs, err := s.RedisClient.HVals(ctx, "users").Result()
+	if err != nil {
+		return nil, err
+	}
+	if len(userJSONs) == 0 {
+		return nil, nil
+	}
+	out := make([]User, len(userJSONs))
+	for i, userJSON := range userJSONs {
+		if err = json.Unmarshal([]byte(userJSON), &out[i]); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (s *Server) AddGroup(ctx context.Context, group *Group) error {
+	groupJSON, err := json.Marshal(group)
+	if err != nil {
+		return err
+	}
+	return s.RedisClient.HSet(ctx, "groups", group.Uuid.String(), groupJSON).Err()
+}
+
+func (s *Server) DeleteGroup(ctx context.Context, uuid Uuid) error {
+	return s.RedisClient.HDel(ctx, "groups", uuid.String()).Err()
+}
+
+func (s *Server) GetGroup(ctx context.Context, uuid Uuid) (*Group, error) {
+	groupJSON, err := s.RedisClient.HGet(ctx, "groups", uuid.String()).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if len(groupJSON) == 0 {
+		return nil, nil
+	}
+	var group Group
+	if err = json.Unmarshal(groupJSON, &group); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal user: %v", err)
+	}
+	return &group, nil
+}
+
+func (s *Server) GetGroups(ctx context.Context) ([]Group, error) {
+	groupJSONs, err := s.RedisClient.HVals(ctx, "groups").Result()
+	if err != nil {
+		return nil, err
+	}
+	if len(groupJSONs) == 0 {
+		return nil, nil
+	}
+	out := make([]Group, len(groupJSONs))
+	for i, groupJSONs := range groupJSONs {
+		if err = json.Unmarshal([]byte(groupJSONs), &out[i]); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
 func (s *Server) SignUp(ctx context.Context, userEmail Email, userName string, hashedPassword string) (Uuid, error) {
 	exists, err := s.RedisClient.HExists(ctx, "signed_up", string(userEmail)).Result()
 	if err != nil {
@@ -198,7 +284,7 @@ func (s *Server) SignUp(ctx context.Context, userEmail Email, userName string, h
 	}
 	userJSON, err := json.Marshal(user)
 	if err != nil {
-		return Uuid(0), err
+		return Uuid(0), fmt.Errorf("Failed to marshal user: %v", err)
 	}
 	// TODO below needs to be in a transaction with above as well?
 	s.RedisClient.HSet(ctx, "signed_up", string(userEmail), userJSON)
@@ -318,6 +404,7 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	emojiString := string(e)
 	// increment count
 	emojisSentCount.Add(emojiString, 1)
+	go s.RedisClient.HIncrBy(context.TODO(), "emojis_sent", emojiString, 1)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -338,6 +425,10 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	} else {
 		old.(*expvar.Float).Set(newTime)
 	}
+	go s.RedisClient.HSet(
+		context.TODO(), "emoji_sent_at",
+		strconv.FormatFloat(newTime, 'E', -1, 64),
+	)
 }
 
 // TODO weight the recommendations with how frequently they are sent.

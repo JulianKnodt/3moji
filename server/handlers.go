@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
@@ -155,8 +156,14 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 
 		if req.Kind == OnlyFriends {
 			for uuid := range s.Friends[user.Uuid] {
-				person, exists := s.Users[uuid]
-				if !exists || uuid == user.Uuid {
+				if uuid == user.Uuid {
+					continue
+				}
+				person, err := s.GetUser(context.Background(), uuid)
+				if err != nil {
+					// TODO log error here
+					continue
+				} else if person == nil {
 					continue
 				}
 				resp.People = append(resp.People, *person)
@@ -166,14 +173,20 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 				}
 			}
 		} else {
-			for _, person := range s.Users {
+			users, err := s.GetUsers(context.Background())
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to get users: %v", err)
+				return
+			}
+			for _, person := range users {
 				if person.Uuid == user.Uuid {
 					continue
 				}
-				if !cond(person) {
+				if !cond(&person) {
 					continue
 				}
-				resp.People = append(resp.People, *person)
+				resp.People = append(resp.People, person)
 				amt -= 1
 				if amt == 0 {
 					break
@@ -318,26 +331,39 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 		defer s.mu.Unlock()
 		switch req.Kind {
 		case JoinGroup:
-			if _, exists := s.Groups[req.GroupUuid]; !exists {
+			group, err := s.GetGroup(context.Background(), req.GroupUuid)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to find group: %v", err)
+				return
+			} else if group == nil {
 				w.WriteHeader(404)
 				fmt.Fprint(w, "No Such group")
 				return
 			}
-			s.Groups[req.GroupUuid].Users[user.Uuid] = struct{}{}
+			group.Users[user.Uuid] = struct{}{}
+			s.AddGroup(context.Background(), group)
 			if _, exists := s.UsersToGroups[user.Uuid]; !exists {
 				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
 			}
 			s.UsersToGroups[user.Uuid][req.GroupUuid] = struct{}{}
 		case LeaveGroup:
-			if _, exists := s.Groups[req.GroupUuid]; !exists {
+			group, err := s.GetGroup(context.Background(), req.GroupUuid)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to find group: %v", err)
+				return
+			} else if group == nil {
 				w.WriteHeader(404)
 				fmt.Fprint(w, "No Such group")
 				return
 			}
-			delete(s.Groups[req.GroupUuid].Users, user.Uuid)
+			delete(group.Users, user.Uuid)
 			delete(s.UsersToGroups[user.Uuid], req.GroupUuid)
-			if len(s.Groups[req.GroupUuid].Users) == 0 {
-				delete(s.Groups, req.GroupUuid)
+			if len(group.Users) == 0 {
+				s.DeleteGroup(context.Background(), req.GroupUuid)
+			} else {
+				s.AddGroup(context.Background(), group)
 			}
 		case CreateGroup:
 			if len(req.GroupName) < 3 {
@@ -358,7 +384,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 					user.Uuid: struct{}{},
 				},
 			}
-			s.Groups[uuid] = group
+			s.AddGroup(context.Background(), &group)
 			if s.UsersToGroups[user.Uuid] == nil {
 				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
 			}
@@ -420,9 +446,15 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			fmt.Fprint(w, "Invalid op kind")
 			return
 		}
+		groups, err := s.GetGroups(context.Background())
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Failed to get groups: %v", err)
+			return
+		}
 		// TODO this is inefficient since we explicitly iterate over everyone.
 		// Probably need to fix later when actually using a database.
-		for _, group := range s.Groups {
+		for _, group := range groups {
 			if !cond(group) {
 				continue
 			}
@@ -588,7 +620,16 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 		var uuids []Uuid
 		switch req.RecipientKind {
 		case MsgGroup:
-			group, exists := s.Groups[req.To]
+			group, err := s.GetGroup(context.Background(), req.To)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to get group: %v", err)
+				return
+			} else if group == nil {
+				w.WriteHeader(404)
+				fmt.Fprint(w, "Group does not exist")
+				return
+			}
 			msg.SentTo = group.Name
 			if !exists {
 				w.WriteHeader(401)
@@ -605,8 +646,12 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				uuids = append(uuids, userUuid)
 			}
 		case MsgFriend:
-			user, exists := s.Users[req.To]
-			if !exists {
+			user, err := s.GetUser(context.Background(), req.To)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Error getting user: %v", err)
+				return
+			} else if user == nil {
 				w.WriteHeader(401)
 				fmt.Fprint(w, "User does not exist")
 				return
@@ -810,6 +855,43 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 			s.UserToMessages[user.Uuid] = nil
 			s.UserToReplies[user.Uuid] = nil
 		}
+		return
+	}
+}
+
+// Handler which returns a summary of all the data gathered on the server.
+func (s *Server) SummaryHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var out SummaryResponse
+		emojisSent, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent").Result()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Failed to get counts: %v", err)
+			return
+		}
+		emojisSentAt, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent_at").Result()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Failed to get times: %v", err)
+			return
+		}
+		for emojis, count := range emojisSent {
+			out.Counts[emojis], err = strconv.Atoi(count)
+			if err != nil {
+				fmt.Printf("Failed to parse count: %v", err)
+				continue
+			}
+		}
+		for emojis, sentAt := range emojisSentAt {
+			out.Times[emojis], err = strconv.ParseFloat(sentAt, 64)
+			if err != nil {
+				fmt.Printf("Failed to parse time: %v", err)
+				continue
+			}
+		}
+
+		enc := json.NewEncoder(w)
+		enc.Encode(out)
 		return
 	}
 }
