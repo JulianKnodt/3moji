@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -31,19 +32,19 @@ func (s *Server) SignUpHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		enc := json.NewEncoder(w)
-		_, err = s.SignUp(email, sup.Name, sup.HashedPassword)
+		_, err = s.SignUp(context.Background(), email, sup.Name, sup.HashedPassword)
 		if err != nil {
 			w.WriteHeader(401)
 			fmt.Fprintf(w, "Failed when signing up: %v", err)
 			return
 		}
-		loginToken, err := s.Login(email, sup.HashedPassword)
+		loginToken, err := s.Login(context.Background(), email, sup.HashedPassword)
 		if err != nil {
 			w.WriteHeader(401)
 			fmt.Fprintf(w, "Failed when logging up: %v", err)
 			return
 		}
-		user, exists := s.UserFor(loginToken)
+		user, exists := s.UserFor(context.Background(), loginToken)
 		if !exists {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "User does not exist after signing up: %v", err)
@@ -79,13 +80,13 @@ func (s *Server) LoginHandler() func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Error logging in, email does not appear to be an email: %v", err)
 			return
 		}
-		loginToken, err := s.Login(email, lp.HashedPassword)
+		loginToken, err := s.Login(context.Background(), email, lp.HashedPassword)
 		if err != nil {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "Error logging in, email or password may be incorrect")
 			return
 		}
-		user, exists := s.UserFor(loginToken)
+		user, exists := s.UserFor(context.Background(), loginToken)
 		if !exists {
 			w.WriteHeader(500)
 			fmt.Fprint(w, "User does not exist")
@@ -125,7 +126,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Invalid login token: %v", err)
 			return
 		}
-		user, exists := s.UserFor(req.LoginToken)
+		user, exists := s.UserFor(context.Background(), req.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -206,24 +207,31 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating login token %v", err)
 			return
 		}
-		user, exists := s.UserFor(token)
+		user, exists := s.UserFor(context.Background(), token)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
 			return
 		}
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		originalMessage, exists := s.Messages[req.MsgID]
-		if !exists {
+		// originalMessage, exists := s.Messages[req.MsgID]
+		originalMessage, err := s.GetMessage(context.Background(), req.MsgID)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Error retrieving message: %v", err)
+			return
+		}
+
+		if originalMessage == nil {
 			w.WriteHeader(404)
 			fmt.Fprint(w, "Message being replied to could not be found!")
 			return
 		}
-		// Do not delete message here, let it naturally expire but now a user should not be able to
-		// see it anymore.
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		// Do not delete the original message here since other users may need to see it, but now a
+		// specific user should not be able to see it anymore.
 		delete(s.UserToMessages[user.Uuid], req.MsgID)
-		// delete(s.Messages, req.MsgID)
 
 		replyUuid, err := generateUuid()
 		if err != nil {
@@ -300,7 +308,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating request: %v", err)
 			return
 		}
-		user, exists := s.UserFor(token)
+		user, exists := s.UserFor(context.Background(), token)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -383,7 +391,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
-		user, exists := s.UserFor(req.LoginToken)
+		user, exists := s.UserFor(context.Background(), req.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -511,7 +519,7 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
-		user, exists := s.UserFor(fp.LoginToken)
+		user, exists := s.UserFor(context.Background(), fp.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -559,7 +567,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
-		user, exists := s.UserFor(req.LoginToken)
+		user, exists := s.UserFor(context.Background(), req.LoginToken)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "Could not find user sending message")
@@ -588,7 +596,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				return
 			}
 			msg.SentTo = group.Name
-			s.Messages[msg.Uuid] = msg
+			s.AddMessage(context.Background(), msg)
 			for userUuid := range group.Users {
 				if s.UserToMessages[userUuid] == nil {
 					s.UserToMessages[userUuid] = map[Uuid]struct{}{}
@@ -604,7 +612,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				return
 			}
 			msg.SentTo = user.Name
-			s.Messages[msg.Uuid] = msg
+			s.AddMessage(context.Background(), msg)
 			if s.UserToMessages[req.To] == nil {
 				s.UserToMessages[req.To] = map[Uuid]struct{}{}
 			}
@@ -693,7 +701,7 @@ func (s *Server) PushNotifTokenHandler() http.HandlerFunc {
 			return
 		}
 
-		user, exists := s.UserFor(token)
+		user, exists := s.UserFor(context.Background(), token)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -749,7 +757,7 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error validating login token: %v", err)
 			return
 		}
-		user, exists := s.UserFor(token)
+		user, exists := s.UserFor(context.Background(), token)
 		if !exists {
 			w.WriteHeader(401)
 			fmt.Fprint(w, "User does not exist")
@@ -762,11 +770,14 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		for uuid := range s.UserToMessages[user.Uuid] {
-			msg, exists := s.Messages[uuid]
-			if !exists {
+			msg, err := s.GetMessage(context.Background(), uuid)
+			if err != nil {
+				// TODO report error here
+				continue
+			} else if msg == nil {
 				continue
 			} else if msg.Expired(now) {
-				delete(s.Messages, uuid)
+				s.DeleteMessage(context.Background(), uuid)
 				continue
 			}
 			out.NewMessages = append(out.NewMessages, msg)
@@ -776,11 +787,14 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 			if !replyExists {
 				continue
 			}
-			msg, exists := s.MessageForReplyLocked(reply)
-			if !exists {
+			msg, err := s.MessageForReply(context.Background(), reply)
+			if err != nil {
+				// TODO report error here
+				continue
+			} else if msg == nil {
 				continue
 			} else if msg.Expired(now) {
-				delete(s.Messages, uuid)
+				s.DeleteMessage(context.Background(), uuid)
 				continue
 			}
 			out.NewReplies = append(out.NewReplies, reply)

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net/mail"
+	"strconv"
 	"time"
 )
 
@@ -121,4 +122,9 @@ func generateUuid() (Uuid, error) {
 
 	uuid := binary.BigEndian.Uint64(uuidBytes[:])
 	return Uuid(uuid), nil
+}
+
+// Convert this Uuid to a string
+func (u Uuid) String() string {
+	return strconv.FormatUint(uint64(u), 10)
 }

@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 	// TODO add boltdb for persistence
 
+	"github.com/go-redis/redis/v8"
 	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
@@ -34,14 +39,14 @@ func main() {
 // simplicity.
 type Server struct {
 	// mu guards the map of struct who have signed up
-	mu              sync.Mutex
-	SignedUp        map[Email]*User
-	LoggedIn        map[Email]LoginToken
-	HashedPasswords map[Uuid]string
+	mu sync.Mutex
+	//SignedUp        map[Email]*User
+	LoggedIn map[Email]LoginToken
+	// HashedPasswords map[Uuid]string
 
 	// In-memory map of recipient to Messages
 	UserToMessages map[Uuid]map[Uuid]struct{}
-	Messages       map[Uuid]*Message
+	//Messages       map[Uuid]*Message
 
 	Users map[Uuid]*User
 	// List of friends for a given user: user -> their friends
@@ -59,17 +64,44 @@ type Server struct {
 
 	// ExpoNotificationTokens for sending push notifications
 	UserNotificationTokens map[Uuid]expo.ExponentPushToken
+
+	// A long living redis client for using as a persistent store.
+	RedisClient *redis.Client
 }
 
 func NewServer() *Server {
-	// TODO only construct expvars if not test environment
+	redisURL := os.Getenv("REDIS_URL")
+	user := ""
+	password := ""
+	if redisURL == "" {
+		redisURL = ":6379"
+	} else {
+		u, err := url.Parse(redisURL)
+		if err != nil {
+			fmt.Println(err)
+		}
+		redisURL = u.Host
+		user = u.User.Username()
+		password, _ = u.User.Password()
+	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     strings.TrimSuffix(redisURL, ":"),
+		Username: user,
+		// TODO need to set a password through secret.
+		Password: password,
+		DB:       0,
+	})
+	// ping the local redis database
+	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
+		fmt.Printf("Failed to open ping redis: %v\n", err)
+	}
 	return &Server{
-		SignedUp:        map[Email]*User{},
-		LoggedIn:        map[Email]LoginToken{},
-		HashedPasswords: map[Uuid]string{},
+		// SignedUp:        map[Email]*User{},
+		LoggedIn: map[Email]LoginToken{},
+		// HashedPasswords: map[Uuid]string{},
 
 		UserToMessages: map[Uuid]map[Uuid]struct{}{},
-		Messages:       map[Uuid]*Message{},
+		//Messages:       map[Uuid]*Message{},
 
 		Groups:        map[Uuid]Group{},
 		UsersToGroups: map[Uuid]map[Uuid]struct{}{},
@@ -84,6 +116,7 @@ func NewServer() *Server {
 		EmojiSendTime: map[EmojiContent]float64{},
 
 		UserNotificationTokens: map[Uuid]expo.ExponentPushToken{},
+		RedisClient:            rdb,
 	}
 }
 
@@ -108,7 +141,6 @@ func (srv *Server) Serve(addr string) error {
 
 	mux.Handle("/debug/vars", expvar.Handler())
 
-	go srv.Cleanup()
 	s := http.Server{
 		Addr:           addr,
 		Handler:        mux,
@@ -120,30 +152,38 @@ func (srv *Server) Serve(addr string) error {
 	return s.ListenAndServe()
 }
 
-// Cleanup will remove any old messages or replies which have not been acknowledged.
-func (s *Server) Cleanup() {
-	t := time.NewTicker(5 * time.Minute)
-	for range t.C {
-		now := time.Now()
-		s.mu.Lock()
-		for uuid, message := range s.Messages {
-			if message.Expired(now) {
-				delete(s.Messages, uuid)
-			}
-		}
-		for uuid, reply := range s.Replies {
-			if _, exists := s.Messages[reply.Message.Uuid]; !exists {
-				delete(s.Replies, uuid)
-			}
-		}
-		s.mu.Unlock()
+func (s *Server) AddMessage(ctx context.Context, msg *Message) error {
+	msgJSON, err := json.Marshal(msg)
+	if err != nil {
+		return nil
 	}
+	return s.RedisClient.HSet(ctx, "messages", msg.Uuid.String(), msgJSON).Err()
 }
 
-func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string) (Uuid, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, exists := s.SignedUp[userEmail]; exists {
+func (s *Server) GetMessage(ctx context.Context, uuid Uuid) (*Message, error) {
+	msgJSON, err := s.RedisClient.HGet(ctx, "messages", uuid.String()).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if len(msgJSON) == 0 {
+		return nil, nil
+	}
+	var message Message
+	if err = json.Unmarshal(msgJSON, &message); err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func (s *Server) DeleteMessage(ctx context.Context, uuid Uuid) error {
+	return s.RedisClient.HDel(ctx, "messages", uuid.String()).Err()
+}
+
+func (s *Server) SignUp(ctx context.Context, userEmail Email, userName string, hashedPassword string) (Uuid, error) {
+	exists, err := s.RedisClient.HExists(ctx, "signed_up", string(userEmail)).Result()
+	if err != nil {
+		return Uuid(0), fmt.Errorf("Error signing up: %v", err)
+	} else if exists {
 		return Uuid(0), fmt.Errorf("User already exists")
 	}
 
@@ -156,31 +196,42 @@ func (s *Server) SignUp(userEmail Email, userName string, hashedPassword string)
 		Email: userEmail,
 		Uuid:  uuid,
 	}
-	s.SignedUp[userEmail] = user
-	s.Users[uuid] = user
-	s.HashedPasswords[uuid] = hashedPassword
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return Uuid(0), err
+	}
+	// TODO below needs to be in a transaction with above as well?
+	s.RedisClient.HSet(ctx, "signed_up", string(userEmail), userJSON)
+	s.RedisClient.HSet(ctx, "hashed_passwords", uuid.String(), hashedPassword)
+	s.RedisClient.HSet(ctx, "users", uuid.String(), userJSON)
 
 	return uuid, nil
 }
 
-func (s *Server) Login(userEmail Email, hashedPassword string) (LoginToken, error) {
+func (s *Server) Login(ctx context.Context, userEmail Email, hashedPassword string) (LoginToken, error) {
 	if hashedPassword == "" {
 		return LoginToken{}, fmt.Errorf("password must not be empty")
 	}
 
-	s.mu.Lock()
-	user, exists := s.SignedUp[userEmail]
-	if !exists || user.Email != userEmail {
-		s.mu.Unlock()
+	userJSON, err := s.RedisClient.HGet(ctx, "signed_up", string(userEmail)).Bytes()
+	if err != nil {
+		return LoginToken{}, err
+	} else if len(userJSON) == 0 {
 		// Show generic error message, but user does not exist
 		return LoginToken{}, fmt.Errorf("Something wrong with login")
 	}
-	if existing := s.HashedPasswords[user.Uuid]; existing != hashedPassword {
-		s.mu.Unlock()
+	var user User
+	if err = json.Unmarshal(userJSON, &user); err != nil {
+		return LoginToken{}, fmt.Errorf("Something wrong with login")
+	}
+	if user.Email != userEmail {
+		return LoginToken{}, fmt.Errorf("Something wrong with login")
+	}
+	existing, err := s.RedisClient.HGet(ctx, "hashed_passwords", user.Uuid.String()).Result()
+	if err != nil || existing != hashedPassword {
 		// Show generic error message, but password isn't right
 		return LoginToken{}, fmt.Errorf("Something wrong with login")
 	}
-	s.mu.Unlock()
 
 	// TODO check collisions of the uuid and retry or crash
 	uuid, err := generateUuid()
@@ -222,17 +273,20 @@ func (s *Server) ValidateLoginToken(token LoginToken) error {
 
 // Given a login token, it will return the user who used that login token. mu should not be
 // held.
-func (s *Server) UserFor(token LoginToken) (*User, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	user, exists := s.SignedUp[token.UserEmail]
-	return user, exists
+func (s *Server) UserFor(ctx context.Context, token LoginToken) (*User, bool) {
+	userJSON, err := s.RedisClient.HGet(ctx, "signed_up", string(token.UserEmail)).Bytes()
+	if err != nil || len(userJSON) == 0 {
+		return nil, false
+	}
+	var user User
+	if err := json.Unmarshal(userJSON, &user); err != nil {
+		return nil, false
+	}
+	return &user, true
 }
 
-// s.mu should be held when called.
-func (s *Server) MessageForReplyLocked(reply MessageReply) (*Message, bool) {
-	msg, exists := s.Messages[reply.Message.Uuid]
-	return msg, exists
+func (s *Server) MessageForReply(ctx context.Context, reply MessageReply) (*Message, error) {
+	return s.GetMessage(ctx, reply.Message.Uuid)
 }
 
 // time is 0 -> 24, returns two values which represents modular clock position
