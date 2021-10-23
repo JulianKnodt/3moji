@@ -485,46 +485,49 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error parsing request: %v", err)
 			return
 		}
-		var resp RecommendationResponse
+		var recs map[EmojiContent]struct{}
 		switch int(math.Round(req.LocalTime)) % 24 {
 		case 6, 7, 8, 9:
-			resp.Recommendations = []EmojiContent{
-				"🥞🍳🥓",
-				"🫖'🥐🌅",
-				"🏃🌄🚲",
-				"💪🤸💪",
+			recs = map[EmojiContent]struct{}{
+				"🥞🍳🥓":  struct{}{},
+				"🫖'🥐🌅": struct{}{},
+				"🏃🌄🚲":  struct{}{},
+				"💪🤸💪":  struct{}{},
 			}
 		case 12, 13:
-			resp.Recommendations = []EmojiContent{
-				"🍕🍔🌯",
-				"🥗🥙🍲",
-				"🍱🍚🍛",
+			recs = map[EmojiContent]struct{}{
+				"🍕🍔🌯": struct{}{},
+				"🥗🥙🍲": struct{}{},
+				"🍱🍚🍛": struct{}{},
 			}
 		case 16, 17:
-			resp.Recommendations = []EmojiContent{
-				"🏀🎾🏐",
-				"🎥🕴🎦",
+			recs = map[EmojiContent]struct{}{
+				"🏀🎾🏐": struct{}{},
+				"🎥🕴🎦": struct{}{},
 			}
 		case 18, 19:
-			resp.Recommendations = []EmojiContent{
-				"🍕🍔🌯",
-				"🥗🥙🍲",
-				"🍱🍚🍛",
+			recs = map[EmojiContent]struct{}{
+				"🍕🍔🌯": struct{}{},
+				"🥗🥙🍲": struct{}{},
+				"🍱🍚🍛": struct{}{},
 			}
 		case 21, 22:
-			resp.Recommendations = []EmojiContent{
-				"🍷🎉🍹",
-				"🍰🍦🍡",
+			recs = map[EmojiContent]struct{}{
+				"🍷🎉🍹": struct{}{},
+				"🍰🍦🍡": struct{}{},
 			}
 		case 23, 0, 1:
-			resp.Recommendations = []EmojiContent{
-				"🌌🚶🌃",
+			recs = map[EmojiContent]struct{}{
+				"🌌🚶🌃": struct{}{},
 			}
 		}
-		resp.Recommendations = append(
-			resp.Recommendations,
-			s.FindNearRecommendations(5, req.LocalTime)...,
-		)
+		for _, v := range s.FindNearRecommendations(5, req.LocalTime) {
+			recs[v] = struct{}{}
+		}
+		var resp RecommendationResponse
+		for rec := range recs {
+			resp.Recommendations = append(resp.Recommendations, rec)
+		}
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
 		return
@@ -874,7 +877,6 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 // Handler which returns a summary of all the data gathered on the server.
 func (s *Server) SummaryHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var out SummaryResponse
 		emojisSent, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent").Result()
 		if err != nil {
 			w.WriteHeader(500)
@@ -886,6 +888,10 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Failed to get times: %v", err)
 			return
+		}
+		out := SummaryResponse{
+			Counts: make(map[string]int, len(emojisSent)),
+			Times:  make(map[string]float64, len(emojisSentAt)),
 		}
 		for emojis, count := range emojisSent {
 			out.Counts[emojis], err = strconv.Atoi(count)
