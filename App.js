@@ -1,6 +1,7 @@
   import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
+import { Header } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
 import { styles } from './styles';
@@ -38,6 +39,8 @@ const getLoc = async() =>{
   }
 }
 
+
+
 const MainApp = () => {
   const [user,setUser] = useState({});
   const [friends, setFriends] = useState([]);
@@ -46,6 +49,7 @@ const MainApp = () => {
   const [notJoinedGroups, setNotJoinedGroups] = useState([]);
   const [invites, setInvites] = useState([]);
   const [messaging, setMessaging] = useState({});
+  const [viewingGroup, setViewingGroup] = useState({});
   const [stack, setStack] = useState([]);
 
   const [password, setPassword] = useState("");
@@ -70,6 +74,15 @@ const MainApp = () => {
       });
     });
   }, []);
+  
+  const CommonHeader = props => {
+    return <View style={styles.wrapper}>
+      <Header centerComponent={{
+        text: HeaderText[props.currentView],
+      }}/>
+      {props.children}
+    </View>
+    };
 
   const updateFriendsAndInvites = async () => {
     const friends = await Queries.getPeople(loginToken,50,Queries.listPeopleKind.all);
@@ -112,10 +125,10 @@ const MainApp = () => {
     if (loginToken == null) return;
     updateFriendsAndInvites();
     getGroups();
-    (async () => {
-      const pushNotifError = await Queries.registerForPushNotifications(loginToken);
-      if (pushNotifError !== null) alert(pushNotifError.msg);
-    })()
+    // (async () => {
+    //   const pushNotifError = await Queries.registerForPushNotifications(loginToken);
+    //   if (pushNotifError !== null) alert(pushNotifError.msg);
+    // })()
   }, [loginToken]);
 
   // TODO fetch friends and invites
@@ -252,42 +265,45 @@ const MainApp = () => {
   };
 
   const Home = () => (
-    <View style={styles.container}>
-      <View style={styles.button}>
-        <Button
-          title="✉️🥺❓"
-          onPress={() => {
-            gotoView(views.SendMsg)}}
-        />
+      
+      <View style={styles.container}>
+        
+        <View style={styles.button}>
+          <Button
+            title="✉️🥺❓"
+            onPress={() => {
+              gotoView(views.SendMsg)}}
+          />
 
+        </View>
+        <View style={styles.button}>
+          <Button
+            title="📨❗👀"
+            onPress={() => gotoView(views.RecvMsg)}
+          />
+        </View>
+        <View style={styles.button}>
+          <Button
+            title="➕😊🥰"
+            onPress={() => gotoView(views.AddGroup)}
+          />
+        </View>
+        <View style={styles.button}>
+          <Button title="Log out" color="#f194ff" onPress={() => {
+              saveLoginToken(null);
+              setLoginToken(null);
+              clearStack();
+              setCurrentView(views.Splash);
+            }
+          }/>
+        </View>
       </View>
-      <View style={styles.button}>
-        <Button
-          title="📨❗👀"
-          onPress={() => gotoView(views.RecvMsg)}
-        />
-      </View>
-      <View style={styles.button}>
-        <Button
-          title="➕😊🥰"
-          onPress={() => gotoView(views.AddGroup)}
-        />
-      </View>
-      <View style={styles.button}>
-        <Button title="Log out" color="#f194ff" onPress={() => {
-            saveLoginToken(null);
-            setLoginToken(null);
-            clearStack();
-            setCurrentView(views.Splash);
-          }
-        }/>
-      </View>
-    </View>
   );
 
   const SendMsg = () => {
     return <View style={styles.container}>
       {/* <View style={styles.mainContent}> */}
+      <Text></Text>
       {joinedGroups.map(group => (
         <View key={group.uuid} style={styles.button}>
           <Button
@@ -313,15 +329,15 @@ const MainApp = () => {
     const [replies, setReplies] = useState([]);
     const [message, setMessage] = useState({});
     const [show, setShow] = useState(false);
-    useEffect(() => {
-      const fetchMessage = async() =>{
-        const resp = await Queries.recvMsg(loginToken);
-        setMessages(resp.newMessages || []);
-        setReplies(resp.newReplies || []);
-        console.log("resp??",resp);
-      }
-      fetchMessage();
-    }, []);
+    // useEffect(() => {
+    //   const fetchMessage = async() =>{
+    //     const resp = await Queries.recvMsg(loginToken);
+    //     setMessages(resp.newMessages || []);
+    //     setReplies(resp.newReplies || []);
+    //     console.log("resp??",resp);
+    //   }
+    //   fetchMessage();
+    // }, []);
 
     const replyMessage = async(message,reply) => {
       console.log(message);
@@ -362,7 +378,7 @@ const MainApp = () => {
     <View style={styles.button}>
       <Button title="Back" color="#f194ff" onPress={back}/>
     </View>
-    <EmojiBoard showBoard={show} onClick={(emoji)=>{replyMessage(message,uuid,emoji.code)}}/>
+    {/* <EmojiBoard showBoard={show} onClick={(emoji)=>{replyMessage(message,uuid,emoji.code)}}/> */}
   </View>};
 
   const AddFriend = () => {
@@ -390,15 +406,12 @@ const MainApp = () => {
         <View key={group.uuid} style={styles.button}>
           <Button
             title={group.name}
-            onPress={async ()=>{
-              const resp = await Queries.joinGroup(loginToken,group.uuid);
-              if (resp instanceof Queries.Error) {
-                return alert(resp.msg);
-              }
-              getGroups();
-              setMessaging(group);
-              gotoView(views.DraftMsg);
-          }}/>
+            onPress={()=>{
+              setViewingGroup(group);
+              gotoView(views.ViewGroup);
+            }}
+         
+          />
         </View>
 
       ))}
@@ -410,6 +423,27 @@ const MainApp = () => {
       </View>
     </View>
   };
+  const ViewGroup = ({viewingGroup}) => {
+    console.log("viewing",viewingGroup)
+    return <View style={styles.container}>
+      <Text>{viewingGroup.name}</Text>
+      <Text>Members:{Object.values(viewingGroup.users).join(",")}</Text>
+      <View style={styles.button}>
+        <Button title="Join" 
+          onPress={async ()=>{
+              const resp = await Queries.joinGroup(loginToken,viewingGroup.uuid);
+              if (resp instanceof Queries.Error) {
+                return alert(resp.msg);
+              }
+              getGroups();
+              back();
+          }}/>
+      </View>
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
+      </View>
+    </View>
+  }
   const CreateGroup = () => {
     const [groupName,setGroupName] = useState("")
     return <View style={styles.container}>
@@ -438,7 +472,7 @@ const MainApp = () => {
   if (currentView == views.Splash) return <Splash gotoView={gotoView.bind(this)}/>;
   else if (currentView == views.SignUp) return <SignUp/>;
   else if (currentView == views.SignIn) return <SignIn/>;
-  else if (currentView == views.Home) return <Home/>;
+  else if (currentView == views.Home) return <CommonHeader currentView={currentView}><Home/></CommonHeader>;
   else if (currentView == views.SendMsg) return <SendMsg/>;
   else if (currentView == views.RecvMsg) return <AckMsg/>;
   else if (currentView == views.DraftMsg) return <DraftMsg
@@ -451,6 +485,7 @@ const MainApp = () => {
   else if (currentView == views.AddFriend) return <AddFriend/>;
   else if (currentView == views.AddGroup) return <AddGroup/>;
   else if (currentView == views.CreateGroup) return <CreateGroup/>;
+  else if (currentView == views.ViewGroup) return <ViewGroup viewingGroup={viewingGroup}/>
   else throw `Unknown view {currentView}`;
 };
 
@@ -535,6 +570,7 @@ const DraftMsg = props => {
 
   return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
+    <Text>Members:{Object.values(messaging.users).join(",")}</Text>
     <Pressable onPress={() => setShow(!show)}>
         <Text>{displayEmoji(emojis)}</Text>
     </Pressable>
@@ -569,7 +605,7 @@ const DraftMsg = props => {
           return alert(resp.msg);
         }
         getGroups();
-        gotoView(views.SendMsg);
+        back();
       }}/>
     </View>
     <View style={styles.button}>
@@ -578,9 +614,4 @@ const DraftMsg = props => {
   </View>
 };
 
-const CommonHeader = props => <View>
-  <Header centerComponent={{
-    text: HeaderText[props.currentView],
-  }}/>
-  {props.children}
-</View>;
+

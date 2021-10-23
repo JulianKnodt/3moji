@@ -1,6 +1,13 @@
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
 export const styles = StyleSheet.create({
+  wrapper: {
+    width:"100%",
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
     container: {
       flex: 1,
       backgroundColor: '#fff',
@@ -37,7 +44,7 @@ export const styles = StyleSheet.create({
       padding: 10,
     },
     button: {
-      width: '50%',
+      width: 200,
       padding: 10,
       
     },

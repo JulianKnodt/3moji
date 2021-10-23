@@ -8,6 +8,7 @@ export const views = {
   DraftMsg: "DraftMsg",
   AddFriend: "AddFriend",
   AddGroup: "AddGroup",
+  ViewGroup: "ViewGroup",
   CreateGroup: "CreateGroup",
 };
 
@@ -17,11 +18,12 @@ export const HeaderText = {
   [views.SignUp]: "",
   [views.SignIn]: "",
   [views.Home]: "🏠",
-  [views.SendMsg]: "",
-  [views.RecvMsg]: "",
-  [views.DraftMsg]: "✍️✉️",
+  [views.SendMsg]: "📤",
+  [views.RecvMsg]: "📥",
+  [views.DraftMsg]: "✍️",
 
   [views.AddFriend]: "",
-  [views.AddGroup]: "",
-  [views.CreateGroup]: "➕👥",
+  [views.AddGroup]: "➕",
+  [views.ViewGroup]: "👥",
+  [views.CreateGroup]: "🆕",
 };
