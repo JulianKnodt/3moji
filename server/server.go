@@ -425,8 +425,7 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 		old.(*expvar.Float).Set(newTime)
 	}
 	go s.RedisClient.HSet(
-		context.TODO(), "emoji_sent_at",
-		strconv.FormatFloat(newTime, 'E', -1, 64),
+		context.TODO(), "emoji_sent_at", emojiString, strconv.FormatFloat(newTime, 'E', -1, 64),
 	)
 }
 
