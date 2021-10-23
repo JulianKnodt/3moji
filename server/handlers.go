@@ -274,17 +274,17 @@ func (s *Server) sendAckPushNotification(
 	original EmojiContent,
 	reply EmojiReply,
 ) {
-	s.mu.Lock()
-	notifToken, exists := s.UserNotificationTokens[senderUuid]
-	if !exists {
-		s.mu.Unlock()
+	notifToken, err := s.RedisClient.HGet(context.Background(), "user_notif_tokens", senderUuid.String()).Result()
+	if err != nil {
+		fmt.Printf("Failed to get user notif token: %v", err)
+		return
+	} else if notifToken == "" {
 		return
 	}
-	s.mu.Unlock()
 
 	pushBody := fmt.Sprintf("%s: %s ↩️ %s", responderName, reply, original)
 	pushMsg := expo.PushMessage{
-		To:       []expo.ExponentPushToken{notifToken},
+		To:       []expo.ExponentPushToken{expo.ExponentPushToken(notifToken)},
 		Body:     pushBody,
 		Sound:    "default",
 		Title:    "📨↩️",
@@ -341,7 +341,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				fmt.Fprint(w, "No Such group")
 				return
 			}
-			group.Users[user.Uuid] = struct{}{}
+			group.Users[user.Uuid] = user.Name
 			s.AddGroup(context.Background(), group)
 			if _, exists := s.UsersToGroups[user.Uuid]; !exists {
 				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
@@ -380,8 +380,8 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			group := Group{
 				Uuid: uuid,
 				Name: req.GroupName,
-				Users: map[Uuid]struct{}{
-					user.Uuid: struct{}{},
+				Users: map[Uuid]string{
+					user.Uuid: user.Name,
 				},
 			}
 			s.AddGroup(context.Background(), &group)
@@ -686,11 +686,14 @@ func (s *Server) sendMessagePushNotification(
 	var to []expo.ExponentPushToken
 	s.mu.Lock()
 	for _, uuid := range uuids {
-		notifToken, exists := s.UserNotificationTokens[uuid]
-		if !exists {
+		notifToken, err := s.RedisClient.HGet(context.Background(), "user_notif_tokens", uuid.String()).Result()
+		if err != nil {
+			fmt.Printf("Failed to get user notif token: %v", err)
+			continue
+		} else if notifToken == "" {
 			continue
 		}
-		to = append(to, notifToken)
+		to = append(to, expo.ExponentPushToken(notifToken))
 	}
 	s.mu.Unlock()
 	if len(to) == 0 {
@@ -761,16 +764,25 @@ func (s *Server) PushNotifTokenHandler() http.HandlerFunc {
 				fmt.Fprintf(w, "Error parsing expo token: %v", err)
 				return
 			}
-
-			s.mu.Lock()
-			s.UserNotificationTokens[user.Uuid] = expoToken
-			s.mu.Unlock()
+			err = s.RedisClient.HSet(
+				context.Background(), "user_notif_tokens", user.Uuid.String(), string(expoToken),
+			).Err()
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to save notification setting: %v", err)
+				return
+			}
 
 			w.WriteHeader(200)
 		case RmNotifToken:
-			s.mu.Lock()
-			delete(s.UserNotificationTokens, user.Uuid)
-			s.mu.Unlock()
+			err := s.RedisClient.HDel(
+				context.Background(), "user_notif_tokens", user.Uuid.String(),
+			).Err()
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to save notification setting: %v", err)
+				return
+			}
 
 			w.WriteHeader(200)
 		default:

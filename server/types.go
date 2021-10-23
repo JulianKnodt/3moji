@@ -56,8 +56,8 @@ type User struct {
 type Group struct {
 	Uuid Uuid `json:"uuid,string"`
 	// Display Name, need not be unique
-	Name  string            `json:"name"`
-	Users map[Uuid]struct{} `json:"users"`
+	Name  string          `json:"name"`
+	Users map[Uuid]string `json:"users"`
 	// TODO should this have a location attached as well?
 }
 
@@ -101,6 +101,7 @@ type LoginToken struct {
 	ValidUntil int64 `json:"validUntil,string"`
 	// uuid is some unique way of representing a log in token so that it cannot be forged with
 	// just the time.
+	// XXX this is not the user's uuid.
 	Uuid Uuid `json:"uuid,string"`
 
 	UserEmail Email `json:"userEmail"`

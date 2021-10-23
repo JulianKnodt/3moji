@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
 var (
@@ -64,7 +63,7 @@ type Server struct {
 	EmojiSendTime map[EmojiContent]float64
 
 	// ExpoNotificationTokens for sending push notifications
-	UserNotificationTokens map[Uuid]expo.ExponentPushToken
+	// UserNotificationTokens map[Uuid]expo.ExponentPushToken
 
 	// A long living redis client for using as a persistent store.
 	RedisClient *redis.Client
@@ -115,8 +114,7 @@ func NewServer() *Server {
 
 		EmojiSendTime: map[EmojiContent]float64{},
 
-		UserNotificationTokens: map[Uuid]expo.ExponentPushToken{},
-		RedisClient:            rdb,
+		RedisClient: rdb,
 	}
 }
 
