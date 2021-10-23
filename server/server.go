@@ -157,11 +157,12 @@ func (s *Server) AddMessage(ctx context.Context, msg *Message) error {
 	if err != nil {
 		return nil
 	}
-	return s.RedisClient.HSet(ctx, "messages", msg.Uuid.String(), msgJSON).Err()
+	duration := time.Second * time.Duration(msg.TTL)
+	return s.RedisClient.Set(ctx, MessageRedisKey(msg.Uuid), msgJSON, duration).Err()
 }
 
 func (s *Server) GetMessage(ctx context.Context, uuid Uuid) (*Message, error) {
-	msgJSON, err := s.RedisClient.HGet(ctx, "messages", uuid.String()).Bytes()
+	msgJSON, err := s.RedisClient.Get(ctx, MessageRedisKey(uuid)).Bytes()
 	if err != nil {
 		return nil, err
 	}

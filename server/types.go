@@ -85,6 +85,10 @@ func (m *Message) Expired(now time.Time) bool {
 	return t.Add(time.Duration(m.TTL) * time.Second).Before(now)
 }
 
+func MessageRedisKey(uuid Uuid) string {
+	return fmt.Sprintf("message_%d", uuid)
+}
+
 type MessageReply struct {
 	Message *Message `json:"message"`
 
