@@ -57,7 +57,7 @@ type Server struct {
 
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
-	Replies       map[Uuid]MessageReply
+	Replies       map[Uuid]*MessageReply
 
 	//EmojiSendCounts *expvar.Map
 	EmojiSendTime map[EmojiContent]float64
@@ -110,7 +110,7 @@ func NewServer() *Server {
 		Friends: map[Uuid]map[Uuid]struct{}{},
 
 		UserToReplies: map[Uuid][]Uuid{},
-		Replies:       map[Uuid]MessageReply{},
+		Replies:       map[Uuid]*MessageReply{},
 
 		EmojiSendTime: map[EmojiContent]float64{},
 
@@ -370,7 +370,7 @@ func (s *Server) UserFor(ctx context.Context, token LoginToken) (*User, bool) {
 	return &user, true
 }
 
-func (s *Server) MessageForReply(ctx context.Context, reply MessageReply) (*Message, error) {
+func (s *Server) MessageForReply(ctx context.Context, reply *MessageReply) (*Message, error) {
 	return s.GetMessage(ctx, reply.Message.Uuid)
 }
 
@@ -427,6 +427,12 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	go s.RedisClient.HSet(
 		context.TODO(), "emoji_sent_at", emojiString, strconv.FormatFloat(newTime, 'E', -1, 64),
 	)
+}
+
+func (s *Server) LogReply(r *MessageReply) {
+	replyString := string(r.Reply)
+	go s.RedisClient.HIncrBy(context.TODO(), "emoji_reply", replyString, 1)
+	go s.RedisClient.HIncrBy(context.TODO(), r.OriginalContent.RedisKey(), replyString, 1)
 }
 
 // TODO weight the recommendations with how frequently they are sent.

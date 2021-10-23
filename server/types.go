@@ -9,27 +9,12 @@ import (
 	"time"
 )
 
-/*
-// The key is not intended to be secret, obfuscating login tokens so they're not immediately
-// visible over the wire.
-var (
-  block cipher.Block
-)
-
-func init() {
-  // TODO or get key from environment
-  var key = [24]byte{}
-  var err error
-  if _, err = rand.Read(key[:]); err != nil {
-    panic(fmt.Errorf("Failed to read key %v", err))
-  }
-  if block, err = aes.NewCipher(key[:]); err != nil {
-    panic(fmt.Errorf("Failed to create cipher %v", err))
-  }
-}
-*/
-
 type EmojiContent string
+
+func (e EmojiContent) RedisKey() string {
+	return fmt.Sprintf("emojis_%s", e)
+}
+
 type EmojiReply string
 
 type Email string

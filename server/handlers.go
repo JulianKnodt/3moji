@@ -253,7 +253,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			return
 		}
 		// TODO check for collisions?
-		s.Replies[replyUuid] = MessageReply{
+		s.Replies[replyUuid] = &MessageReply{
 			Message:         originalMessage,
 			OriginalContent: originalMessage.Emojis,
 			Reply:           req.Reply,
@@ -262,6 +262,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		source := originalMessage.Source
 		s.UserToReplies[source.Uuid] = append(s.UserToReplies[source.Uuid], replyUuid)
 		go s.sendAckPushNotification(source.Uuid, user.Name, originalMessage.Emojis, req.Reply)
+		go s.LogReply(s.Replies[replyUuid])
 
 		w.WriteHeader(200)
 		return
@@ -876,7 +877,15 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 
 // Handler which returns a summary of all the data gathered on the server.
 func (s *Server) SummaryHandler() http.HandlerFunc {
+	// Buffer this so concurrent requests cannot overload the server/redis.
+	n := 5
+	buffer := make(chan struct{}, n)
+	for i := 0; i < n; i++ {
+		buffer <- struct{}{}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		<-buffer
+		defer func() { buffer <- struct{}{} }()
 		emojisSent, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent").Result()
 		if err != nil {
 			w.WriteHeader(500)
@@ -889,9 +898,16 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Failed to get times: %v", err)
 			return
 		}
+		repliesSent, err := s.RedisClient.HGetAll(context.Background(), "emoji_reply").Result()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Failed to get replies: %v", err)
+			return
+		}
 		out := SummaryResponse{
-			Counts: make(map[string]int, len(emojisSent)),
-			Times:  make(map[string]float64, len(emojisSentAt)),
+			Counts:      make(map[string]int, len(emojisSent)),
+			Times:       make(map[string]float64, len(emojisSentAt)),
+			ReplyCounts: make(map[string]int, len(repliesSent)),
 		}
 		for emojis, count := range emojisSent {
 			out.Counts[emojis], err = strconv.Atoi(count)
@@ -904,6 +920,13 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 			out.Times[emojis], err = strconv.ParseFloat(sentAt, 64)
 			if err != nil {
 				fmt.Printf("Failed to parse time: %v", err)
+				continue
+			}
+		}
+		for replies, count := range repliesSent {
+			out.ReplyCounts[replies], err = strconv.Atoi(count)
+			if err != nil {
+				fmt.Printf("Failed to parse reply count: %v", err)
 				continue
 			}
 		}

@@ -37,7 +37,7 @@ type RecvMsgResponse struct {
 	// New messages the user has not seen
 	NewMessages []*Message `json:"newMessages"`
 	// TODO need to add in who replied here
-	NewReplies []MessageReply `json:"newReplies"`
+	NewReplies []*MessageReply `json:"newReplies"`
 }
 
 type FriendAction int
@@ -151,9 +151,14 @@ type PushNotifTokenRequest struct {
 	LoginToken LoginToken           `json:"loginToken"`
 }
 
+// Summary statistics of how people are using the application.
 type SummaryResponse struct {
 	// Counts of how frequently an emoji was sent
 	Counts map[string]int `json:"counts,string"`
 	// When an emoji was most frequently sent at
 	Times map[string]float64 `json:"times,string"`
+	// Which replies were used the most
+	ReplyCounts map[string]int `json:"replyCounts,string"`
+	// Which reply was sent to each message
+	MessageReplies map[string]map[string]int `json:"messageReplies,string"`
 }
