@@ -1,6 +1,6 @@
   import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, Button, Pressable } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView } from 'react-native';
 import { Header } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
@@ -66,11 +66,11 @@ const MainApp = () => {
 
   useEffect(() => {
     loadLoginToken().then(token => {
-      if (token == null) return
+      if (token == null || token.validUntil < Date.now()) return
       setLoginToken(token);
       setCurrentView(views.Home);
       Queries.recvMsg(token).then(resp => {
-        console.log(resp);
+        console.log("recvMsg",resp);
       });
     });
   }, []);
@@ -329,55 +329,55 @@ const MainApp = () => {
     const [replies, setReplies] = useState([]);
     const [message, setMessage] = useState({});
     const [show, setShow] = useState(false);
-    // useEffect(() => {
-    //   const fetchMessage = async() =>{
-    //     const resp = await Queries.recvMsg(loginToken);
-    //     setMessages(resp.newMessages || []);
-    //     setReplies(resp.newReplies || []);
-    //     console.log("resp??",resp);
-    //   }
-    //   fetchMessage();
-    // }, []);
-
+    useEffect(() => {
+      Queries.recvMsg(loginToken).then(resp => {
+        if(resp == null){
+          setMessages([]);
+        }else{
+          setMessages(resp.newMessages);
+        }
+        console.log(resp);
+      });
+    }, []);
+   
     const replyMessage = async(message,reply) => {
-      console.log(message);
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
-      console.log("reply resp",resp);
+      // console.log("reply resp",resp);
     }
     return <View style={styles.container}>
-      {/* <View style={styles.mainContent}> */}
-    {messages.map((message,i)=>(
-        <View key={i} style={styles.inviteContainer}>
+      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} style={styles.mainContent}>
+        {messages.map((message,i)=>(
+            <View key={i} style={styles.inviteContainer}>
+              <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+              <View style={styles.reactContainer}>
+                <View style={styles.inviteButton}>
+                  <Button title="👍" onPress={()=>{
+                    replyMessage(message,"👍");
+                    }}/>
+                </View>
+                <View style={styles.inviteButton}>
+                  <Button title="👎" onPress={()=>{
+                    replyMessage(message,"👎")
+                    }}/>
+                </View>
+                <View style={styles.inviteButton}>
+                  <Button title="➕" onPress={()=>{
+                    setMessage(message);
+                    setShow(!show);
+                  }}/>
+                </View>
+              </View>
+            </View>
+        ))}
+        {/* {replies.map(()=>(
+          <View key={i} style={styles.inviteContainer}> 
           <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
-          <View style={styles.reactContainer}>
-            <View style={styles.inviteButton}>
-              <Button title="👍" onPress={()=>{
-                replyMessage(message,"👍");
-                }}/>
-            </View>
-            <View style={styles.inviteButton}>
-              <Button title="👎" onPress={()=>{
-                replyMessage(message,"👎")
-                }}/>
-            </View>
-            <View style={styles.inviteButton}>
-              <Button title="➕" onPress={()=>{
-                setMessage(message);
-                setShow(!show);
-              }}/>
-            </View>
           </View>
-        </View>
-    ))}
-    {/* {replies.map(()=>(
-      <View key={i} style={styles.inviteContainer}> 
-      <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+        ))} */}
+      </ScrollView>
+      <View style={styles.button}>
+        <Button title="Back" color="#f194ff" onPress={back}/>
       </View>
-    ))} */}
-    {/* </View> */}
-    <View style={styles.button}>
-      <Button title="Back" color="#f194ff" onPress={back}/>
-    </View>
     {/* <EmojiBoard showBoard={show} onClick={(emoji)=>{replyMessage(message,uuid,emoji.code)}}/> */}
   </View>};
 
@@ -424,7 +424,7 @@ const MainApp = () => {
     </View>
   };
   const ViewGroup = ({viewingGroup}) => {
-    console.log("viewing",viewingGroup)
+    // console.log("viewing",viewingGroup)
     return <View style={styles.container}>
       <Text>{viewingGroup.name}</Text>
       <Text>Members:{Object.values(viewingGroup.users).join(",")}</Text>
@@ -473,19 +473,19 @@ const MainApp = () => {
   else if (currentView == views.SignUp) return <SignUp/>;
   else if (currentView == views.SignIn) return <SignIn/>;
   else if (currentView == views.Home) return <CommonHeader currentView={currentView}><Home/></CommonHeader>;
-  else if (currentView == views.SendMsg) return <SendMsg/>;
-  else if (currentView == views.RecvMsg) return <AckMsg/>;
-  else if (currentView == views.DraftMsg) return <DraftMsg
+  else if (currentView == views.SendMsg) return <CommonHeader currentView={currentView}><SendMsg/></CommonHeader>;
+  else if (currentView == views.RecvMsg) return <CommonHeader currentView={currentView}><AckMsg/></CommonHeader>;
+  else if (currentView == views.DraftMsg) return <CommonHeader currentView={currentView}><DraftMsg
     messaging={messaging}
     gotoView={gotoView}
     getGroups={getGroups}
     loginToken={loginToken}
     back={back}
-  />;
+  /></CommonHeader>;
   else if (currentView == views.AddFriend) return <AddFriend/>;
-  else if (currentView == views.AddGroup) return <AddGroup/>;
-  else if (currentView == views.CreateGroup) return <CreateGroup/>;
-  else if (currentView == views.ViewGroup) return <ViewGroup viewingGroup={viewingGroup}/>
+  else if (currentView == views.AddGroup) return <CommonHeader currentView={currentView}><AddGroup/></CommonHeader>;
+  else if (currentView == views.CreateGroup) return <CommonHeader currentView={currentView}><CreateGroup/></CommonHeader>;
+  else if (currentView == views.ViewGroup) return <CommonHeader currentView={currentView}><ViewGroup viewingGroup={viewingGroup}/></CommonHeader>
   else throw `Unknown view {currentView}`;
 };
 
@@ -567,14 +567,20 @@ const DraftMsg = props => {
     else if(emojis.length <= 6) setEmojiError("");
   }
 
-
+  const [text, onChangeText] = React.useState("t");
   return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Text>Members:{Object.values(messaging.users).join(",")}</Text>
-    <Pressable onPress={() => setShow(!show)}>
+    <TextInput
+        style={styles.input}
+        onChangeText={onChangeText}
+        defaultValue={text}
+        placeholder="✍️😀❓"
+    />
+    {/* <Pressable onPress={() => setShow(!show)}>
         <Text>{displayEmoji(emojis)}</Text>
-    </Pressable>
-    <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} />
+    </Pressable> */}
+    {/* <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} /> */}
     {emojiError !== "" && <Text>{emojiError}</Text>}
     <View style={styles.button}>
       <Button title="Send" onPress={sendEmoji}/>

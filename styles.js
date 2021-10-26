@@ -39,9 +39,9 @@ export const styles = StyleSheet.create({
       fontSize: 20,
     },
     inviteButton:{
-      width: 50,
-      height: 50,
-      padding: 10,
+      width: 75,
+      height: 75,
+      padding: 5,
     },
     button: {
       width: 200,
@@ -66,8 +66,6 @@ export const styles = StyleSheet.create({
     },
     mainContent: {
       flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
     }
   });
   
