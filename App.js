@@ -360,6 +360,17 @@ const MainApp = () => {
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
       // console.log("reply resp",resp);
     }
+
+    const onEnterText = (emoji) => {
+      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
+      if(!regex.test(emoji)){
+        console.log(emoji)
+        setEmojiError("You can only send emojis");
+      }else{
+        replyMessage(message,emoji);
+        setEmojiError("");
+      }
+    }
     return <View style={styles.container}>
       <Text>New Messages</Text>
       <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
@@ -381,12 +392,19 @@ const MainApp = () => {
                     }}/>
                 </View>
                 <View style={styles.inviteButton}>
-                  <Button title="➕" onPress={()=>{
+                <TextInput
+                    style={styles.input}
+                    onChangeText={onEnterText}
+                    value={""}
+                    placeholder="➕"
+                />
+                  {/* <Button title="➕" onPress={()=>{
                     setMessage(message);
                     setShow(!show);
                     getMessages();
-                  }}/>
+                  }}/> */}
                 </View>
+                {emojiError !== "" && <Text>{emojiError}</Text>}
               </View>
             </View>
         ))}
@@ -581,8 +599,12 @@ const DraftMsg = props => {
   }
 
   const onEnterText = emoji => {
+    if(emoji.length < emojis.length){
+      setEmoji(emoji);
+      return;
+    }
     const newText = emoji.substring(emojis.length);
-    const regex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u;
+    const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
     if (emojis.length >= 6) setEmojiError("You can only add three emojis");
     else if(!regex.test(newText)){
       console.log(newText)

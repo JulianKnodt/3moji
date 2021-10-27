@@ -67,8 +67,8 @@ export const styles = StyleSheet.create({
     mainContent: {
       // flex: 1,
       width: 400,
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      // alignItems: 'center',
+      // justifyContent: 'space-between',
     }
   });
   
