@@ -66,7 +66,7 @@ const MainApp = () => {
 
   useEffect(() => {
     loadLoginToken().then(token => {
-      if (token == null || token.validUntil < Date.now()) return
+      if (token == null || new Date(Number(token.validUntil) * 1000) < Date.now()) return
       setLoginToken(token);
       setCurrentView(views.Home);
       Queries.recvMsg(token).then(resp => {
