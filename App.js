@@ -321,7 +321,7 @@ const MainApp = () => {
       </View>
     </View>
   };
-
+  
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [emojiError, setEmojiError] = useState("");
@@ -329,15 +329,31 @@ const MainApp = () => {
     const [replies, setReplies] = useState([]);
     const [message, setMessage] = useState({});
     const [show, setShow] = useState(false);
-    useEffect(() => {
+    const [, updateState] = React.useState();
+    const forceUpdate = React.useCallback(() => updateState({}), []);
+    const getMessages = () => {
       Queries.recvMsg(loginToken).then(resp => {
         if(resp == null){
           setMessages([]);
+          setReplies([]);
         }else{
-          setMessages(resp.newMessages);
+          if(resp.newMessages == null){
+            setMessages([]);
+          }else{
+            setMessages(resp.newMessages);
+          }
+          if(resp.newReplies == null){
+            setReplies([]);
+          }else{
+            setReplies(resp.newReplies);
+          }
+          
         }
         console.log(resp);
       });
+    }
+    useEffect(() => {
+      getMessages();
     }, []);
    
     const replyMessage = async(message,reply) => {
@@ -345,35 +361,46 @@ const MainApp = () => {
       // console.log("reply resp",resp);
     }
     return <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} style={styles.mainContent}>
+      <Text>New Messages</Text>
+      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
         {messages.map((message,i)=>(
             <View key={i} style={styles.inviteContainer}>
               <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+              <Text>{message.location}</Text>
               <View style={styles.reactContainer}>
                 <View style={styles.inviteButton}>
                   <Button title="👍" onPress={()=>{
                     replyMessage(message,"👍");
+                    forceUpdate();
                     }}/>
                 </View>
                 <View style={styles.inviteButton}>
                   <Button title="👎" onPress={()=>{
-                    replyMessage(message,"👎")
+                    replyMessage(message,"👎");
+                    forceUpdate();
                     }}/>
                 </View>
                 <View style={styles.inviteButton}>
                   <Button title="➕" onPress={()=>{
                     setMessage(message);
                     setShow(!show);
+                    getMessages();
                   }}/>
                 </View>
               </View>
             </View>
         ))}
-        {/* {replies.map(()=>(
+        
+      </ScrollView>
+      <Text>Replied</Text>
+      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
+        {replies.map((reply,i)=>(
           <View key={i} style={styles.inviteContainer}> 
-          <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+          <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
+          <Text>{reply.message.location}</Text>
+          <Text style={styles.inviteText}>{reply.reply}</Text>
           </View>
-        ))} */}
+        ))}
       </ScrollView>
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
@@ -545,6 +572,7 @@ const DraftMsg = props => {
   }, []);
 
   const sendEmoji = async() => {
+    console.log("emojis",emojis)
     if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
     const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
     if (resp instanceof Queries.Error) {
@@ -552,29 +580,32 @@ const DraftMsg = props => {
     } else back();
   }
 
-  const onClick = emoji => {
+  const onEnterText = emoji => {
+    const newText = emoji.substring(emojis.length);
+    const regex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u;
     if (emojis.length >= 6) setEmojiError("You can only add three emojis");
+    else if(!regex.test(newText)){
+      console.log(newText)
+      setEmojiError("You can only send emojis");
+    }
     else {
-      setEmoji(emojis + emoji.code);
+      setEmoji(emoji);
       setEmojiError("");
     }
-
-    if (emojis.length == 6) setShow(false);
   };
 
   const onRemove = () => {
     if (emojis.length > 0) setEmoji(emojis.substring(0, emojis.length - 2));
     else if(emojis.length <= 6) setEmojiError("");
   }
-
-  const [text, onChangeText] = React.useState("t");
+  console.log(emojis)
   return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Text>Members:{Object.values(messaging.users).join(",")}</Text>
     <TextInput
         style={styles.input}
-        onChangeText={onChangeText}
-        defaultValue={text}
+        onChangeText={onEnterText}
+        value={emojis}
         placeholder="✍️😀❓"
     />
     {/* <Pressable onPress={() => setShow(!show)}>
@@ -601,7 +632,7 @@ const DraftMsg = props => {
     </View>
     {recommendations.map((recommendation,i)=>(
       <View key={i} style={styles.button}>
-        <Button title={recommendation} color="#5ac18e" onPress={()=>{setEmoji(recommendation)}}></Button>
+        <Button title={recommendation} color="#5ac18e" onPress={()=>{console.log("hello???");setEmoji(recommendation)}}></Button>
       </View>
     ))}
     <View style={styles.button}>

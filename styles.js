@@ -23,10 +23,10 @@ export const styles = StyleSheet.create({
       padding: 10,
     },
     inviteContainer:{
-      width: "100%",
-      height: "20%",
+      // flex:1,
+      // width:"100%",
       alignItems: 'center',
-      justifyContent: 'space-between',
+      // justifyContent: 'space-around',
       padding: 25,
     },
     reactContainer:{
@@ -65,7 +65,10 @@ export const styles = StyleSheet.create({
       justifyContent: 'space-between',
     },
     mainContent: {
-      flex: 1,
+      // flex: 1,
+      width: 400,
+      alignItems: 'center',
+      justifyContent: 'space-between',
     }
   });
   
