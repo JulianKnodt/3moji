@@ -53,7 +53,7 @@ type Server struct {
 	Friends map[Uuid]map[Uuid]struct{}
 
 	//  Groups        map[Uuid]Group
-	UsersToGroups map[Uuid]map[Uuid]struct{}
+	// UsersToGroups map[Uuid]map[Uuid]struct{}
 
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
@@ -104,7 +104,7 @@ func NewServer() *Server {
 		//Messages:       map[Uuid]*Message{},
 
 		// Groups:        map[Uuid]Group{},
-		UsersToGroups: map[Uuid]map[Uuid]struct{}{},
+		// UsersToGroups: map[Uuid]map[Uuid]struct{}{},
 
 		//Users:   map[Uuid]*User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
@@ -262,6 +262,39 @@ func (s *Server) GetGroups(ctx context.Context) ([]Group, error) {
 		}
 	}
 	return out, nil
+}
+
+// Adds the uuid of a user into a group.
+func (s *Server) AddUserToGroup(ctx context.Context, user, group Uuid) error {
+	groupUserKey := fmt.Sprintf("%s_group_users", group)
+	return s.RedisClient.SAdd(ctx, groupUserKey, user.String()).Err()
+}
+
+func (s *Server) DeleteUserFromGroup(ctx context.Context, user, group Uuid) error {
+	groupUserKey := fmt.Sprintf("%s_group_users", group)
+	return s.RedisClient.SRem(ctx, groupUserKey, user.String()).Err()
+}
+
+func (s *Server) UserIsMemberOfGroup(ctx context.Context, user, group Uuid) (bool, error) {
+	groupUserKey := fmt.Sprintf("%s_group_users", group)
+	return s.RedisClient.SIsMember(ctx, groupUserKey, user.String()).Result()
+}
+
+// Finds the uuid of all users in a group.
+func (s *Server) UsersInGroup(ctx context.Context, group Uuid) ([]Uuid, error) {
+	groupUserKey := fmt.Sprintf("%s_group_users", group)
+	uuidStrings, err := s.RedisClient.SMembers(ctx, groupUserKey).Result()
+	if err != nil {
+		return nil, err
+	}
+	uuids := make([]Uuid, len(uuidStrings))
+	for i, uuidString := range uuidStrings {
+		uuids[i], err = UuidFromString(uuidString)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return uuids, nil
 }
 
 func (s *Server) SignUp(ctx context.Context, userEmail Email, userName string, hashedPassword string) (Uuid, error) {

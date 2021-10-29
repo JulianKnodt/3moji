@@ -343,11 +343,17 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				return
 			}
 			group.Users[user.Uuid] = user.Name
-			s.AddGroup(context.Background(), group)
-			if _, exists := s.UsersToGroups[user.Uuid]; !exists {
-				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
+			ctx := context.Background()
+			if err = s.AddGroup(ctx, group); err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to save change to group: %v", err)
+				return
 			}
-			s.UsersToGroups[user.Uuid][req.GroupUuid] = struct{}{}
+			if err = s.AddUserToGroup(ctx, user.Uuid, req.GroupUuid); err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to add user to group: %v", err)
+				return
+			}
 		case LeaveGroup:
 			group, err := s.GetGroup(context.Background(), req.GroupUuid)
 			if err != nil {
@@ -360,7 +366,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				return
 			}
 			delete(group.Users, user.Uuid)
-			delete(s.UsersToGroups[user.Uuid], req.GroupUuid)
+			s.DeleteUserFromGroup(context.Background(), user.Uuid, req.GroupUuid)
 			if len(group.Users) == 0 {
 				s.DeleteGroup(context.Background(), req.GroupUuid)
 			} else {
@@ -385,11 +391,9 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 					user.Uuid: user.Name,
 				},
 			}
-			s.AddGroup(context.Background(), &group)
-			if s.UsersToGroups[user.Uuid] == nil {
-				s.UsersToGroups[user.Uuid] = map[Uuid]struct{}{}
-			}
-			s.UsersToGroups[user.Uuid][uuid] = struct{}{}
+			ctx := context.Background()
+			s.AddGroup(ctx, &group)
+			s.AddUserToGroup(ctx, user.Uuid, group.Uuid)
 		}
 
 		w.WriteHeader(200)
@@ -428,19 +432,18 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		var resp ListGroupResponse
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		var cond func(Group) bool
+		var cond func(context.Context, Group) (bool, error)
 		switch req.Kind {
 		case AllGroups:
-			cond = func(Group) bool { return true }
+			cond = func(context.Context, Group) (bool, error) { return true, nil }
 		case JoinedGroups:
-			cond = func(g Group) bool {
-				_, exists := s.UsersToGroups[user.Uuid][g.Uuid]
-				return exists
+			cond = func(ctx context.Context, g Group) (bool, error) {
+				return s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
 			}
 		case NotJoinedGroups:
-			cond = func(g Group) bool {
-				_, exists := s.UsersToGroups[user.Uuid][g.Uuid]
-				return !exists
+			cond = func(ctx context.Context, g Group) (bool, error) {
+				exists, err := s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
+				return !exists, err
 			}
 		default:
 			w.WriteHeader(404)
@@ -455,8 +458,10 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		}
 		// TODO this is inefficient since we explicitly iterate over everyone.
 		// Probably need to fix later when actually using a database.
+		ctx := context.Background()
 		for _, group := range groups {
-			if !cond(group) {
+			matches, err := cond(ctx, group)
+			if !matches || err != nil {
 				continue
 			}
 			resp.Groups = append(resp.Groups, group)

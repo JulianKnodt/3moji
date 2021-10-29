@@ -118,3 +118,8 @@ func generateUuid() (Uuid, error) {
 func (u Uuid) String() string {
 	return strconv.FormatUint(uint64(u), 10)
 }
+
+func UuidFromString(uuid string) (Uuid, error) {
+	u, err := strconv.ParseUint(uuid, 10, 64)
+	return Uuid(u), err
+}
