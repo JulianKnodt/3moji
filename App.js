@@ -1,7 +1,7 @@
   import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView } from 'react-native';
-import { Header } from 'react-native-elements';
+import { Header,Tab, TabView } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
 import { styles } from './styles';
@@ -357,69 +357,99 @@ const MainApp = () => {
     }, []);
    
     const replyMessage = async(message,reply) => {
+      // console.log("reply",reply)
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
       // console.log("reply resp",resp);
     }
 
-    const onEnterText = (emoji) => {
-      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
-      if(!regex.test(emoji)){
-        console.log(emoji)
-        setEmojiError("You can only send emojis");
-      }else{
-        replyMessage(message,emoji);
-        setEmojiError("");
+    const onEnterText = emoji => {
+      if(emoji.length < emojis.length){
+        setEmoji(emoji);
+        return;
       }
-    }
+      const newText = emoji.substring(emojis.length);
+      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
+      if(!regex.test(newText)){
+        console.log(newText)
+        setEmojiError("You can only send emojis");
+      }
+      else {
+        replyMessage(message,emoji);
+        forceUpdate();
+      }
+    };
+    const [index,setIndex] = React.useState(0)
+    console.log(index)
+    const inputRef = React.useRef();
     return <View style={styles.container}>
-      <Text>New Messages</Text>
-      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
-        {messages.map((message,i)=>(
-            <View key={i} style={styles.inviteContainer}>
-              <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
-              <Text>{message.location}</Text>
-              <View style={styles.reactContainer}>
-                <View style={styles.inviteButton}>
-                  <Button title="👍" onPress={()=>{
-                    replyMessage(message,"👍");
-                    forceUpdate();
-                    }}/>
+      <Tab value={index} onChange={setIndex}>  
+        <Tab.Item title="Messages" />  
+        <Tab.Item title="Sent" />  
+        <Tab.Item title="Replies" />
+      </Tab>
+      <TabView value={index} onChange={setIndex} >  
+        <TabView.Item styles={styles.mainContent}>    
+          <Text h1>Messages</Text>
+          {emojiError !== "" && <Text>{emojiError}</Text>}
+          <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
+            {messages.map((message,i)=>(
+                <View key={i} style={styles.inviteContainer}>
+                  <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
+                  <Text>{message.location}</Text>
+                  <View style={styles.reactContainer}>
+                    <View style={styles.inviteButton}>
+                      <Button title="👍" onPress={()=>{
+                        replyMessage(message,"👍");
+                        forceUpdate();
+                        }}/>
+                    </View>
+                    <View style={styles.inviteButton}>
+                      <Button title="👎" onPress={()=>{
+                        replyMessage(message,"👎");
+                        forceUpdate();
+                        }}/>
+                    </View>
+                    <View style={styles.inviteButton}>
+                    {/* <TextInput
+                        style={styles.input}
+                        onChangeText={onEnterText}
+                        value={""}
+                        placeholder="➕"
+                    /> */}
+                      
+                      <Button title="➕" onPress={() => inputRef.current.focus()
+                      }/>
+                      <TextInput 
+                        ref={inputRef} 
+                        value=""
+                        onChangeText={(text) => {setMessage(message); onEnterText(text)}}
+                      />
+                    </View>
+                    
+                  </View>
                 </View>
-                <View style={styles.inviteButton}>
-                  <Button title="👎" onPress={()=>{
-                    replyMessage(message,"👎");
-                    forceUpdate();
-                    }}/>
-                </View>
-                <View style={styles.inviteButton}>
-                <TextInput
-                    style={styles.input}
-                    onChangeText={onEnterText}
-                    value={""}
-                    placeholder="➕"
-                />
-                  {/* <Button title="➕" onPress={()=>{
-                    setMessage(message);
-                    setShow(!show);
-                    getMessages();
-                  }}/> */}
-                </View>
-                {emojiError !== "" && <Text>{emojiError}</Text>}
+            ))}
+            
+          </ScrollView>  
+        </TabView.Item>  
+        <TabView.Item styles={styles.mainContent}>    
+          <Text>Sent</Text>
+          <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
+            {replies.map((reply,i)=>(
+              <View key={i} style={styles.inviteContainer}> 
+              <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
+              <Text>{reply.message.location}</Text>
+              <Text style={styles.inviteText}>{reply.reply}</Text>
               </View>
-            </View>
-        ))}
-        
-      </ScrollView>
-      <Text>Replied</Text>
-      <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
-        {replies.map((reply,i)=>(
-          <View key={i} style={styles.inviteContainer}> 
-          <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
-          <Text>{reply.message.location}</Text>
-          <Text style={styles.inviteText}>{reply.reply}</Text>
-          </View>
-        ))}
-      </ScrollView>
+            ))}
+          </ScrollView> 
+        </TabView.Item>  
+        <TabView.Item styles={styles.mainContent}>    
+          <Text h1>Replies</Text>  
+        </TabView.Item>
+      </TabView>
+      
+      
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
       </View>

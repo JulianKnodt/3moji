@@ -69,6 +69,10 @@ export const styles = StyleSheet.create({
       width: 400,
       // alignItems: 'center',
       // justifyContent: 'space-between',
+    },
+    hiddenInput:{
+      height: 0,
+      display: 'none'
     }
   });
   
