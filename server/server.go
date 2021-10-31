@@ -39,31 +39,21 @@ func main() {
 type Server struct {
 	// mu guards the map of struct who have signed up
 	mu sync.Mutex
-	//SignedUp        map[Email]*User
 	LoggedIn map[Email]LoginToken
-	// HashedPasswords map[Uuid]string
 
 	// In-memory map of recipient to Messages
 	UserToMessages map[Uuid]map[Uuid]struct{}
-	//Messages       map[Uuid]*Message
 
 	// TODO this isn't really in use so it's okay that it gets reset
-	// Users map[Uuid]*User
 	// List of friends for a given user: user -> their friends
 	Friends map[Uuid]map[Uuid]struct{}
 
-	//  Groups        map[Uuid]Group
-	// UsersToGroups map[Uuid]map[Uuid]struct{}
 
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]*MessageReply
 
-	//EmojiSendCounts *expvar.Map
 	EmojiSendTime map[EmojiContent]float64
-
-	// ExpoNotificationTokens for sending push notifications
-	// UserNotificationTokens map[Uuid]expo.ExponentPushToken
 
 	// A long living redis client for using as a persistent store.
 	RedisClient *redis.Client
@@ -98,15 +88,9 @@ func NewServer() *Server {
 	return &Server{
 		// SignedUp:        map[Email]*User{},
 		LoggedIn: map[Email]LoginToken{},
-		// HashedPasswords: map[Uuid]string{},
 
 		UserToMessages: map[Uuid]map[Uuid]struct{}{},
-		//Messages:       map[Uuid]*Message{},
 
-		// Groups:        map[Uuid]Group{},
-		// UsersToGroups: map[Uuid]map[Uuid]struct{}{},
-
-		//Users:   map[Uuid]*User{},
 		Friends: map[Uuid]map[Uuid]struct{}{},
 
 		UserToReplies: map[Uuid][]Uuid{},
