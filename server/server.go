@@ -38,7 +38,7 @@ func main() {
 // simplicity.
 type Server struct {
 	// mu guards the map of struct who have signed up
-	mu sync.Mutex
+	mu       sync.Mutex
 	LoggedIn map[Email]LoginToken
 
 	// In-memory map of recipient to Messages
@@ -47,7 +47,6 @@ type Server struct {
 	// TODO this isn't really in use so it's okay that it gets reset
 	// List of friends for a given user: user -> their friends
 	Friends map[Uuid]map[Uuid]struct{}
-
 
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
@@ -213,7 +212,12 @@ func (s *Server) AddGroup(ctx context.Context, group *Group) error {
 }
 
 func (s *Server) DeleteGroup(ctx context.Context, uuid Uuid) error {
-	return s.RedisClient.HDel(ctx, "groups", uuid.String()).Err()
+	err := s.RedisClient.HDel(ctx, "groups", uuid.String()).Err()
+	if err != nil {
+		return err
+	}
+	groupUserKey := fmt.Sprintf("%s_group_users", uuid)
+	return s.RedisClient.Del(ctx, groupUserKey).Err()
 }
 
 func (s *Server) GetGroup(ctx context.Context, uuid Uuid) (*Group, error) {
