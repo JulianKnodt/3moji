@@ -261,6 +261,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		}
 		source := originalMessage.Source
 		s.UserToReplies[source.Uuid] = append(s.UserToReplies[source.Uuid], replyUuid)
+		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
 		go s.sendAckPushNotification(source.Uuid, user.Name, originalMessage.Emojis, req.Reply)
 		go s.LogReply(s.Replies[replyUuid])
 
