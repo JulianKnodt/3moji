@@ -443,8 +443,8 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			}
 		case NotJoinedGroups:
 			cond = func(ctx context.Context, g Group) (bool, error) {
-				exists, err := s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
-				return !exists, err
+				isMember, err := s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
+				return !isMember, err
 			}
 		default:
 			w.WriteHeader(404)
