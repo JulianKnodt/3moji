@@ -1,6 +1,6 @@
-  import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView,Modal, Image } from 'react-native';
 import { Header,Tab, TabView } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
@@ -39,7 +39,66 @@ const getLoc = async() =>{
   }
 }
 
+export const TOSText = (
+  <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.TOSTextView}>
+    <Image style={styles.stretch} source={require('./consent_form.png')}/>
+    <Text>
+      TITLE OF RESEARCH: Effect of Limited (emoji) choice, Better defaults, & Ephemeral messages on communication
+      {"\n\n"}
+      PRINCIPAL INVESTIGATOR: Monroy-Hernández, Andrés 
+      {"\n\n"}
+      PRINCIPAL INVESTIGATOR’S DEPARTMENT: Computer Science
+    </Text>
+    <Text style={styles.titleText}>
+      Key information about the study:
+    </Text>
+    <Text>
+      Your informed consent is being sought for research. 
+      Participation in the research is voluntary. 
+      The purpose of the research is to understand how users interacted with broadcasted ephemeral emoji messages.
+      {"\n\n"}
+      The procedures that the subject will be asked to follow in the research: Messages and reaction data will be gathered for analysis(anonymized). 
+      An optional survey will be released after about a month of App release. 
+      Both components of the study are optional and voluntary.
+      {"\n\n"}
+      The reasonably foreseeable risks or discomforts to the subject as a result of participation: Minimal
+      {"\n\n"}
+      The benefits to the subject or to others, e.g., society that may reasonably be expected from the research : Understand the role of ephemerality and emojis in communication.
+    </Text>
+    <Text style={styles.titleText}>
+      Additional information about the study:
+    </Text>
+    <Text style={styles.subtitleText}>
+    Confidentiality:
+    </Text>
+    <Text>
+    All records from this study will remain anonymous. Your responses will be kept private, and we will not include any information that will make it possible to identify you in any report we might publish.
+    {"\n\n"}
+    Research records will be stored securely in a locked cabinet and/or on password-protected computers. The research team will be the only party that will have access to your data.
+    </Text>
+    <Text style={styles.subtitleText}>
+    Who to contact with questions:
+    </Text>
+    <Text>
+    Investigators: yl1128@princeton.edu or jknodt@princeton.edu
+    {"\n\n"}
+    If you have questions regarding your rights as a research subject, or if problems arise which you do not feel you can discuss with the Investigator, please contact the Institutional Review Board at: Phone: (609) 258-8543 Email: irb@princeton.edu
+    </Text>
+    <Text style={styles.titleText}>
+    Summary:
+    </Text>
+    <Text>
+    I understand the information that was presented and that:
+    {"\n\n"}
+    My participation is voluntary.
+    {"\n\n"}
+    Refusal to participate will involve no penalty or loss of benefits to which I am otherwise entitled. I may discontinue participation at any time without penalty or loss of benefits.
+    {"\n\n"}
+    I do not waive any legal rights or release Princeton University or its agents from liability for negligence. I hereby give my consent to be the subject of the research.
 
+    </Text>
+  </ScrollView>
+)
 
 const MainApp = () => {
   const [user,setUser] = useState({});
@@ -181,7 +240,36 @@ const MainApp = () => {
     const [name,setName] = useState("");
     const [password, setPassword] = useState("");
     const [emailError,setEmailError] = useState("");
+    const [modalVisible, setModalVisible] = useState(false);
+    const consentFormLink = "https://docs.google.com/document/d/e/2PACX-1vQRRPw63heYKNfKMYzUIY4e4txQJnexTcWoADN8cmH5Tz2a5rQ7vCeYPbSx91K5YyxrtEV81yfgNER4/pub"
     return <View style={styles.container}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          Alert.alert("Modal has been closed.");
+          setModalVisible(!modalVisible);
+        }}
+      >
+      <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+          {TOSText}
+            <Pressable
+              style={[styles.button, styles.buttonAgree]}
+              onPress={() => signup(name, email, password).catch(err => alert("Something went wrong 😱!\n" + err))}
+            >
+              <Text style={styles.textStyle}>Agree</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.button, styles.buttonDisagree]}
+              onPress={() => setModalVisible(!modalVisible)}
+            >
+              <Text style={styles.textStyle}>Disagree</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       <Text>{"Please fill in your email:"}</Text>
       <TextInput
         style={styles.input}
@@ -213,8 +301,9 @@ const MainApp = () => {
         onChangeText={setPassword}
       />
       <View style={styles.button}>
-        <Button title="Sign Up" onPress={async () =>
-        signup(name, email, password).catch(err => alert("Something went wrong 😱!\n" + err))
+        <Button title="Sign Up" onPress={async () =>{
+        setModalVisible(true);
+      }
         }/>
       </View>
 
@@ -327,7 +416,9 @@ const MainApp = () => {
     const [emojiError, setEmojiError] = useState("");
     const [messages, setMessages] = useState([]);
     const [replies, setReplies] = useState([]);
+    const [sents, setSents] = useState([]);
     const [message, setMessage] = useState({});
+    const [messageIndex, setMessageIndex] = useState(-1);
     const [show, setShow] = useState(false);
     const [, updateState] = React.useState();
     const forceUpdate = React.useCallback(() => updateState({}), []);
@@ -340,16 +431,20 @@ const MainApp = () => {
           if(resp.newMessages == null){
             setMessages([]);
           }else{
-            setMessages(resp.newMessages);
+            setMessages(resp.newMessages.filter(nw => nw.source.email != loginToken.userEmail));
           }
           if(resp.newReplies == null){
             setReplies([]);
+            setSents([]);
           }else{
-            setReplies(resp.newReplies);
+            setSents(resp.newReplies.filter(nr => nr.from.email == loginToken.userEmail));
+            setReplies(resp.newReplies.filter(nr => nr.message.source.email == loginToken.userEmail));
+            console.log("newReplies",resp.newReplies);
+            console.log("sent",resp.newReplies.filter(nr => nr.from.email == loginToken.userEmail));
           }
           
         }
-        console.log(resp);
+        
       });
     }
     useEffect(() => {
@@ -375,7 +470,7 @@ const MainApp = () => {
       }
       else {
         replyMessage(message,emoji);
-        forceUpdate();
+        messages.splice(messageIndex, 1)
       }
     };
     const [index,setIndex] = React.useState(0)
@@ -387,9 +482,9 @@ const MainApp = () => {
         <Tab.Item title="Sent" />  
         <Tab.Item title="Replies" />
       </Tab>
-      <TabView value={index} onChange={setIndex} >  
+      <TabView value={index-1} onChange={setIndex} >  
         <TabView.Item styles={styles.mainContent}>    
-          <Text h1>Messages</Text>
+          <View>
           {emojiError !== "" && <Text>{emojiError}</Text>}
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
             {messages.map((message,i)=>(
@@ -400,29 +495,29 @@ const MainApp = () => {
                     <View style={styles.inviteButton}>
                       <Button title="👍" onPress={()=>{
                         replyMessage(message,"👍");
-                        forceUpdate();
+                        // setMessages(msgs => {
+                        //     msgs.splice(i, 1);
+                        //     return msgs;
+                        //   })
                         }}/>
                     </View>
                     <View style={styles.inviteButton}>
                       <Button title="👎" onPress={()=>{
                         replyMessage(message,"👎");
-                        forceUpdate();
+                        messages.splice(i, 1)
                         }}/>
                     </View>
                     <View style={styles.inviteButton}>
-                    {/* <TextInput
-                        style={styles.input}
-                        onChangeText={onEnterText}
-                        value={""}
-                        placeholder="➕"
-                    /> */}
                       
                       <Button title="➕" onPress={() => inputRef.current.focus()
                       }/>
                       <TextInput 
                         ref={inputRef} 
                         value=""
-                        onChangeText={(text) => {setMessage(message); onEnterText(text)}}
+                        onChangeText={(text) => {
+                          setMessage(message); 
+                          setMessageIndex(i);
+                          onEnterText(text)}}
                       />
                     </View>
                     
@@ -431,11 +526,12 @@ const MainApp = () => {
             ))}
             
           </ScrollView>  
+          </View>
         </TabView.Item>  
         <TabView.Item styles={styles.mainContent}>    
-          <Text>Sent</Text>
+        <View>
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
-            {replies.map((reply,i)=>(
+            {sents.map((reply,i)=>(
               <View key={i} style={styles.inviteContainer}> 
               <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
               <Text>{reply.message.location}</Text>
@@ -443,9 +539,21 @@ const MainApp = () => {
               </View>
             ))}
           </ScrollView> 
+          </View>
         </TabView.Item>  
         <TabView.Item styles={styles.mainContent}>    
-          <Text h1>Replies</Text>  
+          <View> 
+          <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
+            {replies.map((reply,i)=>(
+              <View key={i} style={styles.inviteContainer}> 
+              <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
+              <Text>{reply.message.location}</Text>
+              <Text style={styles.inviteText}>{reply.from.name}:{reply.reply}</Text>
+              </View>
+            ))}
+            </ScrollView>
+          </View>
+          
         </TabView.Item>
       </TabView>
       
