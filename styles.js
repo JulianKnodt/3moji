@@ -26,8 +26,17 @@ export const styles = StyleSheet.create({
       // flex:1,
       // width:"100%",
       alignItems: 'center',
-      // justifyContent: 'space-around',
+      justifyContent: 'space-around',
+      display: 'flex',
       padding: 25,
+    },
+    inviteInput:{
+      width: 65,
+      height:35,
+      padding:5,
+      backgroundColor: "#2196F3",
+      marginBottom:30,
+      marginLeft:5,
     },
     reactContainer:{
       flex: 1,

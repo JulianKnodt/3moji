@@ -413,7 +413,8 @@ const MainApp = () => {
   
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
-    const [emojiError, setEmojiError] = useState("");
+    const [sendEmojis, setSendEmojis] = useState([]);
+    const [emojiErrors, setEmojiErrors] = useState([]);
     const [messages, setMessages] = useState([]);
     const [replies, setReplies] = useState([]);
     const [sents, setSents] = useState([]);
@@ -421,7 +422,39 @@ const MainApp = () => {
     const [messageIndex, setMessageIndex] = useState(-1);
     const [show, setShow] = useState(false);
     const [, updateState] = React.useState();
+    const [text,onChangeText] = useState();
     const forceUpdate = React.useCallback(() => updateState({}), []);
+    const onEnterText = (emoji,message,i) => {
+      let currEmojis = [...sendEmojis];
+      const currEmoji = "";
+      if(currEmojis[i] != null) currEmoji = currEmojis[i];
+      currEmojis[i] = currEmoji
+      setSendEmojis(currEmoji)
+      if(currEmoji.length > emojis.length){
+        console.log(currEmoji)
+        currEmojis[i] = emoji;
+        setSendEmojis(currEmojis);
+        return;
+      }
+      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/u;
+      let currEmojiErrors = [...emojiErrors]
+      if(currEmoji.length > 0){
+        emojiErrors[i] = "You can only react with one emoji";
+        console.log(currEmoji.length,emoji.length);
+      }
+      else if(!regex.test(emoji)){
+        console.log("not passing??")
+        emojiErrors[i] = "You can only send emojis";
+      }
+      else {
+        replyMessage(message,emoji);
+        currEmojis[i] = emoji;
+        setSendEmojis(currEmojis);
+        emojiErrors[i] = ""
+      }
+      setEmojiErrors(currEmojiErrors);
+    }
+    
     const getMessages = () => {
       Queries.recvMsg(loginToken).then(resp => {
         if(resp == null){
@@ -430,21 +463,22 @@ const MainApp = () => {
         }else{
           if(resp.newMessages == null){
             setMessages([]);
+            setSendEmojis([]);
+            setEmojiErrors([]);
           }else{
-            setMessages(resp.newMessages.filter(nw => nw.source.email != loginToken.userEmail));
+            const received = resp.newMessages.filter(nw => nw.source.email != loginToken.userEmail);
+            setMessages(received);
+            setSendEmojis(Array(received.length))
+            setEmojiErrors(Array(received.length))
           }
           if(resp.newReplies == null){
             setReplies([]);
             setSents([]);
           }else{
             setSents(resp.newReplies.filter(nr => nr.from.email == loginToken.userEmail));
-            setReplies(resp.newReplies.filter(nr => nr.message.source.email == loginToken.userEmail));
-            console.log("newReplies",resp.newReplies);
-            console.log("sent",resp.newReplies.filter(nr => nr.from.email == loginToken.userEmail));
+            setReplies(resp.newReplies.filter(nr => nr.message.source.email == loginToken.userEmail));   
           }
-          
         }
-        
       });
     }
     useEffect(() => {
@@ -457,35 +491,18 @@ const MainApp = () => {
       // console.log("reply resp",resp);
     }
 
-    const onEnterText = emoji => {
-      if(emoji.length < emojis.length){
-        setEmoji(emoji);
-        return;
-      }
-      const newText = emoji.substring(emojis.length);
-      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
-      if(!regex.test(newText)){
-        console.log(newText)
-        setEmojiError("You can only send emojis");
-      }
-      else {
-        replyMessage(message,emoji);
-        messages.splice(messageIndex, 1)
-      }
-    };
     const [index,setIndex] = React.useState(0)
-    console.log(index)
     const inputRef = React.useRef();
     return <View style={styles.container}>
       <Tab value={index} onChange={setIndex}>  
-        <Tab.Item title="Messages" />  
-        <Tab.Item title="Sent" />  
-        <Tab.Item title="Replies" />
+        <Tab.Item title="✉️" />  
+        <Tab.Item title="✍️" />  
+        <Tab.Item title="💬" />
       </Tab>
       <TabView value={index-1} onChange={setIndex} >  
         <TabView.Item styles={styles.mainContent}>    
           <View>
-          {emojiError !== "" && <Text>{emojiError}</Text>}
+          
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
             {messages.map((message,i)=>(
                 <View key={i} style={styles.inviteContainer}>
@@ -495,10 +512,6 @@ const MainApp = () => {
                     <View style={styles.inviteButton}>
                       <Button title="👍" onPress={()=>{
                         replyMessage(message,"👍");
-                        // setMessages(msgs => {
-                        //     msgs.splice(i, 1);
-                        //     return msgs;
-                        //   })
                         }}/>
                     </View>
                     <View style={styles.inviteButton}>
@@ -507,22 +520,17 @@ const MainApp = () => {
                         messages.splice(i, 1)
                         }}/>
                     </View>
-                    <View style={styles.inviteButton}>
-                      
-                      <Button title="➕" onPress={() => inputRef.current.focus()
-                      }/>
-                      <TextInput 
-                        ref={inputRef} 
-                        value=""
-                        onChangeText={(text) => {
-                          setMessage(message); 
-                          setMessageIndex(i);
-                          onEnterText(text)}}
-                      />
-                    </View>
+                    <TextInput
+                      style={styles.inviteInput}
+                      textAlign={'center'}
+                      onChangeText={(text)=>{console.log("value",sendEmojis[i]);onEnterText(text,message,i)}}
+                      placeholder={"➕"}
+                      value={sendEmojis[i]}/>
                     
                   </View>
+                  {emojiErrors[i] !== "" && <Text>{emojiErrors[i]}</Text>}
                 </View>
+                
             ))}
             
           </ScrollView>  
