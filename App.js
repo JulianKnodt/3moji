@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const loginTokenKey = "@3moji-login-token";
 const userKey = "@3moji-user";
+const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
 
 const displayEmoji = emojis => {
   const dashs = ['-','-','-'];
@@ -421,12 +422,18 @@ const MainApp = () => {
     const [message, setMessage] = useState({});
     const [messageIndex, setMessageIndex] = useState(-1);
     const [show, setShow] = useState(false);
-    const [, updateState] = React.useState();
     const [text,onChangeText] = useState();
-    const forceUpdate = React.useCallback(() => updateState({}), []);
+    useEffect(() => {
+      console.log(sendEmojis, emojiRegex.test(sendEmojis));
+      setMessages(messages.filter((v, i) => i != 0));
+      if (emojiRegex.test(sendEmojis)) {
+      } else {
+        setSendEmojis("");
+      }
+    }, [sendEmojis]);
     const onEnterText = (emoji,message,i) => {
-      let currEmojis = [...sendEmojis];
-      const currEmoji = "";
+      setSendEmojis(emoji);
+      /*
       if(currEmojis[i] != null) currEmoji = currEmojis[i];
       currEmojis[i] = currEmoji
       setSendEmojis(currEmoji)
@@ -436,7 +443,6 @@ const MainApp = () => {
         setSendEmojis(currEmojis);
         return;
       }
-      const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/u;
       let currEmojiErrors = [...emojiErrors]
       if(currEmoji.length > 0){
         emojiErrors[i] = "You can only react with one emoji";
@@ -453,8 +459,8 @@ const MainApp = () => {
         emojiErrors[i] = ""
       }
       setEmojiErrors(currEmojiErrors);
+      */
     }
-    
     const getMessages = () => {
       Queries.recvMsg(loginToken).then(resp => {
         if(resp == null){
@@ -750,9 +756,8 @@ const DraftMsg = props => {
       return;
     }
     const newText = emoji.substring(emojis.length);
-    const regex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
     if (emojis.length >= 6) setEmojiError("You can only add three emojis");
-    else if(!regex.test(newText)){
+    else if(!emojiRegex.test(newText)){
       console.log(newText)
       setEmojiError("You can only send emojis");
     }
