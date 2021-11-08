@@ -38,8 +38,8 @@ func main() {
 // simplicity.
 type Server struct {
 	// mu guards the map of struct who have signed up
-	mu       sync.Mutex
-	LoggedIn map[Email]LoginToken
+	mu sync.Mutex
+	// LoggedIn map[Email]LoginToken
 
 	// In-memory map of recipient to Messages
 	UserToMessages map[Uuid]map[Uuid]struct{}
@@ -86,7 +86,7 @@ func NewServer() *Server {
 	}
 	return &Server{
 		// SignedUp:        map[Email]*User{},
-		LoggedIn: map[Email]LoginToken{},
+		// LoggedIn: map[Email]LoginToken{},
 
 		UserToMessages: map[Uuid]map[Uuid]struct{}{},
 
@@ -350,21 +350,41 @@ func (s *Server) Login(ctx context.Context, userEmail Email, hashedPassword stri
 		Uuid:       uuid,
 		UserEmail:  userEmail,
 	}
-	s.mu.Lock()
-	s.LoggedIn[user.Email] = loginToken
-	s.mu.Unlock()
+	if err = s.setLoggedIn(ctx, loginToken); err != nil {
+		return LoginToken{}, err
+	}
 	return loginToken, nil
+}
+
+func (s *Server) setLoggedIn(ctx context.Context, loginToken LoginToken) error {
+	loginTokenJSON, err := json.Marshal(loginToken)
+	if err != nil {
+		return err
+	}
+	loginTokenKey := fmt.Sprintf("%s_login_token", loginToken.UserEmail)
+	duration := time.Unix(loginToken.ValidUntil, 0).Sub(time.Now())
+	return s.RedisClient.Set(ctx, loginTokenKey, loginTokenJSON, duration).Err()
 }
 
 // Checks that a login token is correct, and matches the currently existing token kept on the
 // token.
 func (s *Server) ValidateLoginToken(token LoginToken) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	existingToken, exists := s.LoggedIn[token.UserEmail]
-	if !exists {
-		return fmt.Errorf("Token does not exist")
-	} else if existingToken != token {
+	if token.Expired() {
+		return fmt.Errorf(
+			"Token has expired, was valid until %v & is now %v",
+			time.Unix(token.ValidUntil, 0), time.Now(),
+		)
+	}
+	loginTokenKey := fmt.Sprintf("%s_login_token", token.UserEmail)
+	tokenJSON, err := s.RedisClient.Get(context.TODO(), loginTokenKey).Bytes()
+	if err != nil {
+		return err
+	}
+	var existingToken LoginToken
+	if err = json.Unmarshal(tokenJSON, &existingToken); err != nil {
+		return err
+	}
+	if existingToken != token {
 		return fmt.Errorf("Tokens do not match want: %v, got: %v", existingToken, token)
 	}
 	if existingToken.Expired() {
