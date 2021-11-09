@@ -95,6 +95,7 @@ export const styles = StyleSheet.create({
     mainContent: {
       // flex: 1,
       width: 400,
+      // height: "100%"
       // alignItems: 'center',
       // justifyContent: 'space-between',
     },

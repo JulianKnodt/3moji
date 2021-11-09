@@ -414,52 +414,33 @@ const MainApp = () => {
   
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
-    const [sendEmojis, setSendEmojis] = useState([]);
-    const [emojiErrors, setEmojiErrors] = useState([]);
+    const [sendEmoji, setSendEmoji] = useState("");
+    const [emojiError, setEmojiError] = useState("");
     const [messages, setMessages] = useState([]);
     const [replies, setReplies] = useState([]);
     const [sents, setSents] = useState([]);
     const [message, setMessage] = useState({});
     const [messageIndex, setMessageIndex] = useState(-1);
-    const [show, setShow] = useState(false);
-    const [text,onChangeText] = useState();
     useEffect(() => {
-      console.log(sendEmojis, emojiRegex.test(sendEmojis));
-      setMessages(messages.filter((v, i) => i != 0));
-      if (emojiRegex.test(sendEmojis)) {
+      if (emojiError === "") {
+        replyMessage(message,sendEmoji).then(()=>getMessages());
+        // setMessages(messages.filter((v, i) => i != messageIndex));
+        setSendEmoji("")
+        setMessageIndex(-1)
       } else {
-        setSendEmojis("");
+        setSendEmoji("");
+        setMessageIndex(-1)
       }
-    }, [sendEmojis]);
+    }, [sendEmoji,messageIndex,message]);
     const onEnterText = (emoji,message,i) => {
-      setSendEmojis(emoji);
-      /*
-      if(currEmojis[i] != null) currEmoji = currEmojis[i];
-      currEmojis[i] = currEmoji
-      setSendEmojis(currEmoji)
-      if(currEmoji.length > emojis.length){
-        console.log(currEmoji)
-        currEmojis[i] = emoji;
-        setSendEmojis(currEmojis);
-        return;
+      if(!emojiRegex.test(emoji)){
+        setEmojiError("You can only send emojis");
+      }else {
+        setSendEmoji(emoji);
+        setMessageIndex(i);
+        setMessage(message)
+        setEmojiError("")
       }
-      let currEmojiErrors = [...emojiErrors]
-      if(currEmoji.length > 0){
-        emojiErrors[i] = "You can only react with one emoji";
-        console.log(currEmoji.length,emoji.length);
-      }
-      else if(!regex.test(emoji)){
-        console.log("not passing??")
-        emojiErrors[i] = "You can only send emojis";
-      }
-      else {
-        replyMessage(message,emoji);
-        currEmojis[i] = emoji;
-        setSendEmojis(currEmojis);
-        emojiErrors[i] = ""
-      }
-      setEmojiErrors(currEmojiErrors);
-      */
     }
     const getMessages = () => {
       Queries.recvMsg(loginToken).then(resp => {
@@ -469,13 +450,13 @@ const MainApp = () => {
         }else{
           if(resp.newMessages == null){
             setMessages([]);
-            setSendEmojis([]);
-            setEmojiErrors([]);
+            setSendEmoji("");
+            setEmojiError("");
           }else{
             const received = resp.newMessages.filter(nw => nw.source.email != loginToken.userEmail);
             setMessages(received);
-            setSendEmojis(Array(received.length))
-            setEmojiErrors(Array(received.length))
+            setSendEmoji("")
+            setEmojiError("")
           }
           if(resp.newReplies == null){
             setReplies([]);
@@ -498,7 +479,6 @@ const MainApp = () => {
     }
 
     const [index,setIndex] = React.useState(0)
-    const inputRef = React.useRef();
     return <View style={styles.container}>
       <Tab value={index} onChange={setIndex}>  
         <Tab.Item title="✉️" />  
@@ -507,8 +487,8 @@ const MainApp = () => {
       </Tab>
       <TabView value={index-1} onChange={setIndex} >  
         <TabView.Item styles={styles.mainContent}>    
-          <View>
-          
+          <View styles={styles.mainContent}>
+          {emojiError !== "" && <Text>{emojiError}</Text>}
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
             {messages.map((message,i)=>(
                 <View key={i} style={styles.inviteContainer}>
@@ -517,24 +497,26 @@ const MainApp = () => {
                   <View style={styles.reactContainer}>
                     <View style={styles.inviteButton}>
                       <Button title="👍" onPress={()=>{
-                        replyMessage(message,"👍");
+                        setSendEmoji("👍");
+                        setMessageIndex(i);
+                        setMessage(message);
                         }}/>
                     </View>
                     <View style={styles.inviteButton}>
                       <Button title="👎" onPress={()=>{
-                        replyMessage(message,"👎");
-                        messages.splice(i, 1)
+                        setSendEmoji("👎");
+                        setMessageIndex(i);
+                        setMessage(message)
                         }}/>
                     </View>
                     <TextInput
                       style={styles.inviteInput}
                       textAlign={'center'}
-                      onChangeText={(text)=>{console.log("value",sendEmojis[i]);onEnterText(text,message,i)}}
+                      onChangeText={(text)=>{onEnterText(text,message,i)}}
                       placeholder={"➕"}
-                      value={sendEmojis[i]}/>
-                    
+                      value={""}
+                      />
                   </View>
-                  {emojiErrors[i] !== "" && <Text>{emojiErrors[i]}</Text>}
                 </View>
                 
             ))}
@@ -735,14 +717,14 @@ const DraftMsg = props => {
   useEffect(() => {
     const fetchMessage = async() =>{
       const resp = await Queries.recommendations();
-      console.log(resp.recommendations);
+      // console.log(resp.recommendations);
       setRecommendations(resp.recommendations || []);
     }
     fetchMessage();
   }, []);
 
   const sendEmoji = async() => {
-    console.log("emojis",emojis)
+    // console.log("emojis",emojis)
     if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
     const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
     if (resp instanceof Queries.Error) {
@@ -758,7 +740,7 @@ const DraftMsg = props => {
     const newText = emoji.substring(emojis.length);
     if (emojis.length >= 6) setEmojiError("You can only add three emojis");
     else if(!emojiRegex.test(newText)){
-      console.log(newText)
+      // console.log(newText)
       setEmojiError("You can only send emojis");
     }
     else {
@@ -771,7 +753,7 @@ const DraftMsg = props => {
     if (emojis.length > 0) setEmoji(emojis.substring(0, emojis.length - 2));
     else if(emojis.length <= 6) setEmojiError("");
   }
-  console.log(emojis)
+  // console.log(emojis)
   return <View style={styles.container}>
     <Text>Sending message to {messaging.name}</Text>
     <Text>Members:{Object.values(messaging.users).join(",")}</Text>
@@ -805,7 +787,7 @@ const DraftMsg = props => {
     </View>
     {recommendations.map((recommendation,i)=>(
       <View key={i} style={styles.button}>
-        <Button title={recommendation} color="#5ac18e" onPress={()=>{console.log("hello???");setEmoji(recommendation)}}></Button>
+        <Button title={recommendation} color="#5ac18e" onPress={()=>{setEmoji(recommendation)}}></Button>
       </View>
     ))}
     <View style={styles.button}>
