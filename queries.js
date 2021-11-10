@@ -111,6 +111,7 @@ export const recvMsg = async (loginToken) => {
 export const ackMsg = async (msgID, reply, loginToken) => {
   const req = { msgID, reply, loginToken };
   console.log("reply",msgID,reply);
+  if(reply === "") return;
   const resp = await fetch(serverURL + "api/v1/ack_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
