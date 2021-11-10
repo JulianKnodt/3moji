@@ -34,7 +34,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "description": ""
+    "description": "",
+    "owner": "3moji",
+    "githubUrl": "https://github.com/JulianKnodt/3moji"
   },
   "image": "heroku/go"
 }
