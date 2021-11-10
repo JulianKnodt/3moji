@@ -157,31 +157,35 @@ export const notifTokenActionKind = {
 
 const granted = "granted";
 export const registerForPushNotifications = async loginToken => {
-  if (!Constants.isDevice) return alert('Must use physical device for Push Notifications');
+  try{
+    if (!Constants.isDevice) return alert('Must use physical device for Push Notifications');
 
-  const existingStatus = (await Notifications.getPermissionsAsync()).status;
-  let finalStatus = existingStatus;
-  if (existingStatus !== granted)
-    finalStatus = (await Notifications.requestPermissionsAsync()).status;
-
-  if (finalStatus !== granted) return alert('Failed to get push token for push notification!');
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
-  // just re-get token each time?
-
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
+    const existingStatus = (await Notifications.getPermissionsAsync()).status;
+    let finalStatus = existingStatus;
+    if (existingStatus !== granted)
+      finalStatus = (await Notifications.requestPermissionsAsync()).status;
+  
+    if (finalStatus !== granted) return alert('Failed to get push token for push notification!');
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    // just re-get token each time?
+  
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+    const req = { token, loginToken, kind: notifTokenActionKind.add, };
+    const dst = serverURL + "api/v1/push_token/";
+    const resp = await fetch(dst, {
+      method: 'POST', headers, body: JSON.stringify(req),
     });
+    return handleResp(resp, true);
+  } catch(e){
+    return null
   }
-  const req = { token, loginToken, kind: notifTokenActionKind.add, };
-  const dst = serverURL + "api/v1/push_token/";
-  const resp = await fetch(dst, {
-    method: 'POST', headers, body: JSON.stringify(req),
-  });
-  return handleResp(resp, true);
 };
 
 export const unsubPushNotifications = async loginToken => {

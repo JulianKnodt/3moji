@@ -189,6 +189,8 @@ const MainApp = () => {
       const pushNotifError = await Queries.registerForPushNotifications(loginToken);
       if (pushNotifError !== null) alert(pushNotifError.msg);
       console.log(pushNotifError)
+
+      
     })()
   }, [loginToken]);
 
@@ -478,8 +480,14 @@ const MainApp = () => {
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
       // console.log("reply resp",resp);
     }
-
+    
     const [index,setIndex] = React.useState(0)
+    
+    useEffect(()=>{
+      if(index < 0){
+        setIndex(0);
+      }
+    },[index])
     return <View style={styles.container}>
       <Tab value={index} onChange={setIndex}>  
         <Tab.Item title="✉️" />  
