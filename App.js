@@ -185,10 +185,11 @@ const MainApp = () => {
     if (loginToken == null) return;
     updateFriendsAndInvites();
     getGroups();
-    // (async () => {
-    //   const pushNotifError = await Queries.registerForPushNotifications(loginToken);
-    //   if (pushNotifError !== null) alert(pushNotifError.msg);
-    // })()
+    (async () => {
+      const pushNotifError = await Queries.registerForPushNotifications(loginToken);
+      if (pushNotifError !== null) alert(pushNotifError.msg);
+      console.log(pushNotifError)
+    })()
   }, [loginToken]);
 
   // TODO fetch friends and invites

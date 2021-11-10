@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "threemoji",
-    "slug": "threemoji",
+    "name": "3moji",
+    "slug": "3moji",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,12 +24,17 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "permissions": ["ACCESS_BACKGROUND_LOCATION","ACCESS_COARSE_LOCATION",
-                      "ACCESS_FINE_LOCATION","FOREGROUND_SERVICE"]
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "description": ""
   },
   "image": "heroku/go"
 }
