@@ -214,6 +214,11 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error decoding ack message %v", err)
 			return
 		}
+		if len(req.Reply) == 0 {
+			w.WriteHeader(401)
+			fmt.Fprint(w, "Cannot send empty reply")
+			return
+		}
 		token := req.LoginToken
 		if err := s.ValidateLoginToken(token); err != nil {
 			w.WriteHeader(401)
