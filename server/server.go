@@ -123,6 +123,7 @@ func (srv *Server) Serve(addr string) error {
 	mux.HandleFunc("/api/v1/summary/", srv.SummaryHandler())
 
 	mux.Handle("/debug/vars", expvar.Handler())
+	mux.Handle("/debug/reset_redis", srv.ResetRedis())
 
 	s := http.Server{
 		Addr:           addr,

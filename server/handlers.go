@@ -947,3 +947,15 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 		return
 	}
 }
+
+func (s *Server) ResetRedis() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := s.RedisClient.FlushAll(context.Background()).Err(); err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Failed to flush database: %v", err)
+			return
+		}
+		w.WriteHeader(200)
+		return
+	}
+}
