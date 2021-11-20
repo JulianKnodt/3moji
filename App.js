@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView,Modal, Image } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView,Modal, Image, Alert } from 'react-native';
 import { Header,Tab, TabView } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
@@ -300,7 +300,7 @@ const MainApp = () => {
   const Home = () => (
       <View style={styles.container}>
         <View style={styles.button}>
-          <Button title="✍️❓" onPress={() => gotoView(views.SendMsg)}/>
+          <Button title="📨✍️❓" onPress={() => gotoView(views.SendMsg)}/>
         </View>
         <View style={styles.button}>
           <Button title="📨❗👀" onPress={() => gotoView(views.RecvMsg)}/>
@@ -309,13 +309,17 @@ const MainApp = () => {
           <Button title="➕👥🥰" onPress={() => gotoView(views.AddGroup)}/>
         </View>
         <View style={styles.button}>
-          <Button title="Log out" color="#f194ff" onPress={() => {
-              saveLoginToken(null);
-              setLoginToken(null);
-              clearStack();
-              setCurrentView(views.Splash);
-            }
-          }/>
+          <Button title="Log out 👋" color="#f194ff" onPress={() => Alert.alert(
+            "Log out?", "",
+            [ { text: "❌", onPress: () => {}, style: "cancel" },
+              { text: "✅", onPress: () => {
+                saveLoginToken(null);
+                setLoginToken(null);
+                clearStack();
+                setCurrentView(views.Splash);
+              }
+            }])}
+          />
         </View>
       </View>
   );
@@ -402,9 +406,8 @@ const MainApp = () => {
       getMessages();
     }, []);
     const replyMessage = async(message,reply) => {
-      // console.log("reply",reply)
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
-      // console.log("reply resp",resp);
+      // TODO check if resp is an error
     }
     const [index,setIndex] = React.useState(0)
     useEffect(()=>{
