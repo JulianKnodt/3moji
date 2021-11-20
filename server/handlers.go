@@ -376,7 +376,11 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			if len(group.Users) == 0 {
 				s.DeleteGroup(context.Background(), req.GroupUuid)
 			} else {
-				s.AddGroup(context.Background(), group)
+				if err = s.AddGroup(context.Background(), group); err != nil {
+					w.WriteHeader(500)
+					fmt.Fprintf(w, "Failed to update group: %v", err)
+					return
+				}
 			}
 		case CreateGroup:
 			if len(req.GroupName) < 3 {
@@ -398,8 +402,33 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				},
 			}
 			ctx := context.Background()
-			s.AddGroup(ctx, &group)
-			s.AddUserToGroup(ctx, user.Uuid, group.Uuid)
+			if err = s.AddGroup(context.Background(), &group); err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to update group: %v", err)
+				return
+			}
+			if err = s.AddUserToGroup(ctx, user.Uuid, group.Uuid); err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to add user to group: %v", err)
+				return
+			}
+		case SwitchLockGroup:
+			group, err := s.GetGroup(context.Background(), req.GroupUuid)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to find group: %v", err)
+				return
+			} else if group == nil {
+				w.WriteHeader(404)
+				fmt.Fprint(w, "No Such group")
+				return
+			}
+			group.Locked = !group.Locked
+			if err = s.AddGroup(context.Background(), group); err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Failed to update group: %v", err)
+				return
+			}
 		}
 
 		w.WriteHeader(200)
@@ -466,6 +495,9 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		// Probably need to fix later when actually using a database.
 		ctx := context.Background()
 		for _, group := range groups {
+			if group.Locked {
+				continue
+			}
 			matches, err := cond(ctx, group)
 			if !matches || err != nil {
 				continue

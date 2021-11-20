@@ -97,6 +97,7 @@ const (
 	// When removing people from a group, if the group is empty it will be deleted.
 	LeaveGroup
 	CreateGroup
+	SwitchLockGroup
 )
 
 type GroupRequest struct {

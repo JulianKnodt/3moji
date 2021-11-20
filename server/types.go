@@ -44,6 +44,9 @@ type Group struct {
 	Name  string          `json:"name"`
 	Users map[Uuid]string `json:"users"`
 	// TODO should this have a location attached as well?
+
+	// Whether new users can join this group or not. It will never be displayed
+	Locked bool `json:"locked,omitempty"`
 }
 
 // Message is a struct that represents an emoji message between two people
