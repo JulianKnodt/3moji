@@ -505,6 +505,11 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🫖'🥐🌅": struct{}{},
 				"🏃🌄🚲":  struct{}{},
 				"💪🤸💪":  struct{}{},
+				"☕️🍩🥣": struct{}{},
+			}
+		case 10, 11:
+			recs = map[EmojiContent]struct{}{
+				"💻📝🎧": struct{}{},
 			}
 		case 12, 13:
 			recs = map[EmojiContent]struct{}{
@@ -512,10 +517,15 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🥗🥙🍲": struct{}{},
 				"🍱🍚🍛": struct{}{},
 			}
+		case 14, 15:
+			recs = map[EmojiContent]struct{}{
+				"💻📝🎧": struct{}{},
+			}
 		case 16, 17:
 			recs = map[EmojiContent]struct{}{
 				"🏀🎾🏐": struct{}{},
 				"🎥🕴🎦": struct{}{},
+				"💻📝🎧": struct{}{},
 			}
 		case 18, 19:
 			recs = map[EmojiContent]struct{}{
