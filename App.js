@@ -40,66 +40,11 @@ const getLoc = async() =>{
   }
 }
 
-export const TOSText = (
-  <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.TOSTextView}>
-    <Image style={styles.stretch} source={require('./consent_form.png')}/>
-    <Text>
-      TITLE OF RESEARCH: Effect of Limited (emoji) choice, Better defaults, & Ephemeral messages on communication
-      {"\n\n"}
-      PRINCIPAL INVESTIGATOR: Monroy-Hernández, Andrés 
-      {"\n\n"}
-      PRINCIPAL INVESTIGATOR’S DEPARTMENT: Computer Science
-    </Text>
-    <Text style={styles.titleText}>
-      Key information about the study:
-    </Text>
-    <Text>
-      Your informed consent is being sought for research. 
-      Participation in the research is voluntary. 
-      The purpose of the research is to understand how users interacted with broadcasted ephemeral emoji messages.
-      {"\n\n"}
-      The procedures that the subject will be asked to follow in the research: Messages and reaction data will be gathered for analysis(anonymized). 
-      An optional survey will be released after about a month of App release. 
-      Both components of the study are optional and voluntary.
-      {"\n\n"}
-      The reasonably foreseeable risks or discomforts to the subject as a result of participation: Minimal
-      {"\n\n"}
-      The benefits to the subject or to others, e.g., society that may reasonably be expected from the research : Understand the role of ephemerality and emojis in communication.
-    </Text>
-    <Text style={styles.titleText}>
-      Additional information about the study:
-    </Text>
-    <Text style={styles.subtitleText}>
-    Confidentiality:
-    </Text>
-    <Text>
-    All records from this study will remain anonymous. Your responses will be kept private, and we will not include any information that will make it possible to identify you in any report we might publish.
-    {"\n\n"}
-    Research records will be stored securely in a locked cabinet and/or on password-protected computers. The research team will be the only party that will have access to your data.
-    </Text>
-    <Text style={styles.subtitleText}>
-    Who to contact with questions:
-    </Text>
-    <Text>
-    Investigators: yl1128@princeton.edu or jknodt@princeton.edu
-    {"\n\n"}
-    If you have questions regarding your rights as a research subject, or if problems arise which you do not feel you can discuss with the Investigator, please contact the Institutional Review Board at: Phone: (609) 258-8543 Email: irb@princeton.edu
-    </Text>
-    <Text style={styles.titleText}>
-    Summary:
-    </Text>
-    <Text>
-    I understand the information that was presented and that:
-    {"\n\n"}
-    My participation is voluntary.
-    {"\n\n"}
-    Refusal to participate will involve no penalty or loss of benefits to which I am otherwise entitled. I may discontinue participation at any time without penalty or loss of benefits.
-    {"\n\n"}
-    I do not waive any legal rights or release Princeton University or its agents from liability for negligence. I hereby give my consent to be the subject of the research.
+// TODO compute emoji len accurately
+const emojiLen = (emojis) => {
+  throw "NotImplementedException";
+};
 
-    </Text>
-  </ScrollView>
-)
 
 const MainApp = () => {
   const [user,setUser] = useState({});
@@ -134,12 +79,9 @@ const MainApp = () => {
       });
     });
   }, []);
-  
   const CommonHeader = props => {
     return <View style={styles.wrapper}>
-      <Header centerComponent={{
-        text: HeaderText[props.currentView],
-      }}/>
+      <Header centerComponent={{text: HeaderText[props.currentView]}}/>
       {props.children}
     </View>
     };
@@ -189,8 +131,6 @@ const MainApp = () => {
       const pushNotifError = await Queries.registerForPushNotifications(loginToken);
       if (pushNotifError !== null) alert(pushNotifError.msg);
       console.log(pushNotifError)
-
-      
     })()
   }, [loginToken]);
 
@@ -358,28 +298,15 @@ const MainApp = () => {
   };
 
   const Home = () => (
-      
       <View style={styles.container}>
-        
         <View style={styles.button}>
-          <Button
-            title="✉️🥺❓"
-            onPress={() => {
-              gotoView(views.SendMsg)}}
-          />
-
+          <Button title="✍️❓" onPress={() => gotoView(views.SendMsg)}/>
         </View>
         <View style={styles.button}>
-          <Button
-            title="📨❗👀"
-            onPress={() => gotoView(views.RecvMsg)}
-          />
+          <Button title="📨❗👀" onPress={() => gotoView(views.RecvMsg)}/>
         </View>
         <View style={styles.button}>
-          <Button
-            title="➕😊🥰"
-            onPress={() => gotoView(views.AddGroup)}
-          />
+          <Button title="➕👥🥰" onPress={() => gotoView(views.AddGroup)}/>
         </View>
         <View style={styles.button}>
           <Button title="Log out" color="#f194ff" onPress={() => {
@@ -414,7 +341,7 @@ const MainApp = () => {
       </View>
     </View>
   };
-  
+
   const AckMsg = () => {
     const [emojis, setEmoji] = useState("");
     const [sendEmoji, setSendEmoji] = useState("");
@@ -466,7 +393,7 @@ const MainApp = () => {
             setSents([]);
           }else{
             setSents(resp.newReplies.filter(nr => nr.from.email == loginToken.userEmail));
-            setReplies(resp.newReplies.filter(nr => nr.message.source.email == loginToken.userEmail));   
+            setReplies(resp.newReplies.filter(nr => nr.message.source.email == loginToken.userEmail));
           }
         }
       });
@@ -474,28 +401,25 @@ const MainApp = () => {
     useEffect(() => {
       getMessages();
     }, []);
-   
     const replyMessage = async(message,reply) => {
       // console.log("reply",reply)
       const resp = await Queries.ackMsg(message.uuid,reply,loginToken);
       // console.log("reply resp",resp);
     }
-    
     const [index,setIndex] = React.useState(0)
-    
     useEffect(()=>{
       if(index < 0){
         setIndex(0);
       }
     },[index])
     return <View style={styles.container}>
-      <Tab value={index} onChange={setIndex}>  
-        <Tab.Item title="✉️" />  
-        <Tab.Item title="✍️" />  
-        <Tab.Item title="💬" />
+      <Tab value={index} onChange={setIndex}>
+        <Tab.Item title="📬‼️" />
+        <Tab.Item title="✉️↩️"/>
+        <Tab.Item title="💬🤘"/>
       </Tab>
-      <TabView value={index-1} onChange={setIndex} >  
-        <TabView.Item styles={styles.mainContent}>    
+      <TabView value={index-1} onChange={setIndex} >
+        <TabView.Item styles={styles.mainContent}>
           <View styles={styles.mainContent}>
           {emojiError !== "" && <Text>{emojiError}</Text>}
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
@@ -527,30 +451,28 @@ const MainApp = () => {
                       />
                   </View>
                 </View>
-                
             ))}
-            
-          </ScrollView>  
+          </ScrollView>
           </View>
-        </TabView.Item>  
-        <TabView.Item styles={styles.mainContent}>    
+        </TabView.Item>
+        <TabView.Item styles={styles.mainContent}>
         <View>
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
             {sents.map((reply,i)=>(
-              <View key={i} style={styles.inviteContainer}> 
+              <View key={i} style={styles.inviteContainer}>
               <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
               <Text>{reply.message.location}</Text>
               <Text style={styles.inviteText}>{reply.reply}</Text>
               </View>
             ))}
-          </ScrollView> 
+          </ScrollView>
           </View>
-        </TabView.Item>  
-        <TabView.Item styles={styles.mainContent}>    
-          <View> 
+        </TabView.Item>
+        <TabView.Item styles={styles.mainContent}>
+          <View>
           <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.mainContent}>
             {replies.map((reply,i)=>(
-              <View key={i} style={styles.inviteContainer}> 
+              <View key={i} style={styles.inviteContainer}>
               <Text style={styles.inviteText}>{reply.message.source.name}📲{reply.message.sentTo}: {reply.message.emojis}?</Text>
               <Text>{reply.message.location}</Text>
               <Text style={styles.inviteText}>{reply.from.name}:{reply.reply}</Text>
@@ -558,11 +480,8 @@ const MainApp = () => {
             ))}
             </ScrollView>
           </View>
-          
         </TabView.Item>
       </TabView>
-      
-      
       <View style={styles.button}>
         <Button title="Back" color="#f194ff" onPress={back}/>
       </View>
@@ -598,7 +517,6 @@ const MainApp = () => {
               setViewingGroup(group);
               gotoView(views.ViewGroup);
             }}
-         
           />
         </View>
 
@@ -617,7 +535,7 @@ const MainApp = () => {
       <Text>{viewingGroup.name}</Text>
       <Text>Members:{Object.values(viewingGroup.users).join(",")}</Text>
       <View style={styles.button}>
-        <Button title="Join" 
+        <Button title="Join"
           onPress={async ()=>{
               const resp = await Queries.joinGroup(loginToken,viewingGroup.uuid);
               if (resp instanceof Queries.Error) {
@@ -816,3 +734,63 @@ const DraftMsg = props => {
 };
 
 
+export const TOSText = (
+  <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} contentContainerStyle={styles.TOSTextView}>
+    <Image style={styles.stretch} source={require('./consent_form.png')}/>
+    <Text>
+      TITLE OF RESEARCH: Effect of Limited (emoji) choice, Better defaults, & Ephemeral messages on communication
+      {"\n\n"}
+      PRINCIPAL INVESTIGATOR: Monroy-Hernández, Andrés
+      {"\n\n"}
+      PRINCIPAL INVESTIGATOR’S DEPARTMENT: Computer Science
+    </Text>
+    <Text style={styles.titleText}>
+      Key information about the study:
+    </Text>
+    <Text>
+      Your informed consent is being sought for research.
+      Participation in the research is voluntary.
+      The purpose of the research is to understand how users interacted with broadcasted ephemeral emoji messages.
+      {"\n\n"}
+      The procedures that the subject will be asked to follow in the research: Messages and reaction data will be gathered for analysis(anonymized).
+      An optional survey will be released after about a month of App release.
+      Both components of the study are optional and voluntary.
+      {"\n\n"}
+      The reasonably foreseeable risks or discomforts to the subject as a result of participation: Minimal
+      {"\n\n"}
+      The benefits to the subject or to others, e.g., society that may reasonably be expected from the research : Understand the role of ephemerality and emojis in communication.
+    </Text>
+    <Text style={styles.titleText}>
+      Additional information about the study:
+    </Text>
+    <Text style={styles.subtitleText}>
+    Confidentiality:
+    </Text>
+    <Text>
+    All records from this study will remain anonymous. Your responses will be kept private, and we will not include any information that will make it possible to identify you in any report we might publish.
+    {"\n\n"}
+    Research records will be stored securely in a locked cabinet and/or on password-protected computers. The research team will be the only party that will have access to your data.
+    </Text>
+    <Text style={styles.subtitleText}>
+    Who to contact with questions:
+    </Text>
+    <Text>
+    Investigators: yl1128@princeton.edu or jknodt@princeton.edu
+    {"\n\n"}
+    If you have questions regarding your rights as a research subject, or if problems arise which you do not feel you can discuss with the Investigator, please contact the Institutional Review Board at: Phone: (609) 258-8543 Email: irb@princeton.edu
+    </Text>
+    <Text style={styles.titleText}>
+    Summary:
+    </Text>
+    <Text>
+    I understand the information that was presented and that:
+    {"\n\n"}
+    My participation is voluntary.
+    {"\n\n"}
+    Refusal to participate will involve no penalty or loss of benefits to which I am otherwise entitled. I may discontinue participation at any time without penalty or loss of benefits.
+    {"\n\n"}
+    I do not waive any legal rights or release Princeton University or its agents from liability for negligence. I hereby give my consent to be the subject of the research.
+
+    </Text>
+  </ScrollView>
+)

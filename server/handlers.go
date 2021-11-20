@@ -654,6 +654,9 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			msg.SentTo = group.Name
 			s.AddMessage(context.Background(), msg)
 			for userUuid := range group.Users {
+				if userUuid == msg.Source.Uuid {
+					continue
+				}
 				if s.UserToMessages[userUuid] == nil {
 					s.UserToMessages[userUuid] = map[Uuid]struct{}{}
 				}
