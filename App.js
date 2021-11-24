@@ -11,6 +11,7 @@ import * as Queries from './queries';
 import * as Location from 'expo-location';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import GraphemeSplitter from "grapheme-splitter";
 
 const loginTokenKey = "@3moji-login-token";
 const userKey = "@3moji-user";
@@ -26,7 +27,6 @@ const isEmail = email => {
   return re.test(email);
 }
 
-
 const getLoc = async() =>{
   try{
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -41,10 +41,8 @@ const getLoc = async() =>{
 }
 
 // TODO compute emoji len accurately
-const emojiLen = (emojis) => {
-  throw "NotImplementedException";
-};
-
+const splitter = new GraphemeSplitter();
+const emojiLen = emojis => splitter.countGraphemes(emojis);
 
 const MainApp = () => {
   const [user,setUser] = useState({});
