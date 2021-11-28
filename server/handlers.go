@@ -267,6 +267,7 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 		source := originalMessage.Source
 		s.UserToReplies[source.Uuid] = append(s.UserToReplies[source.Uuid], replyUuid)
 		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
+		// TODO need to add the ability to add group notifications here
 		go s.sendAckPushNotification(source.Uuid, user.Name, originalMessage.Emojis, req.Reply)
 		go s.LogReply(s.Replies[replyUuid])
 
@@ -360,6 +361,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 				fmt.Fprintf(w, "Failed to add user to group: %v", err)
 				return
 			}
+			go s.joinGroupNotification(group, user.Name)
 		case LeaveGroup:
 			group, err := s.GetGroup(context.Background(), req.GroupUuid)
 			if err != nil {
@@ -433,6 +435,47 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 
 		w.WriteHeader(200)
 		return
+	}
+}
+
+func (s *Server) joinGroupNotification(group *Group, newUserName string) {
+	usersInGroup := make([]Uuid, 0, len(group.Users))
+	for uuid, name := range group.Users {
+		if name != newUserName {
+			usersInGroup = append(usersInGroup, uuid)
+		}
+	}
+	ctx := context.Background()
+	var to []expo.ExponentPushToken
+	for _, uuid := range usersInGroup {
+		notifToken, err := s.RedisClient.HGet(ctx, "user_notif_tokens", uuid.String()).Result()
+		if err != nil {
+			fmt.Printf("Failed to get user notif token: %v", err)
+			continue
+		} else if notifToken == "" {
+			continue
+		}
+		to = append(to, expo.ExponentPushToken(notifToken))
+	}
+	if len(to) == 0 {
+		return
+	}
+
+	pushBody := fmt.Sprintf("👋 %s➕%s 🎉", group.Name, newUserName)
+	pushMsg := expo.PushMessage{
+		To:       to,
+		Body:     pushBody,
+		Sound:    "default",
+		Title:    "👥➕",
+		Priority: expo.DefaultPriority,
+	}
+	client := expo.NewPushClient(nil)
+	resp, err := client.Publish(&pushMsg)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if resp.ValidateResponse() != nil {
+		fmt.Println("Failed to send push notification")
 	}
 }
 
@@ -744,7 +787,6 @@ func (s *Server) sendMessagePushNotification(
 	location string,
 ) {
 	var to []expo.ExponentPushToken
-	s.mu.Lock()
 	for _, uuid := range uuids {
 		notifToken, err := s.RedisClient.HGet(context.Background(), "user_notif_tokens", uuid.String()).Result()
 		if err != nil {
@@ -755,7 +797,6 @@ func (s *Server) sendMessagePushNotification(
 		}
 		to = append(to, expo.ExponentPushToken(notifToken))
 	}
-	s.mu.Unlock()
 	if len(to) == 0 {
 		return
 	}
