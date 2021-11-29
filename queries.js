@@ -47,6 +47,7 @@ export const groupOpKind = {
   joinGroup: 0,
   leaveGroup: 1,
   createGroup: 2,
+  switchLockGroup: 3,
 };
 
 export const joinGroup = async (loginToken, groupUuid) =>
@@ -58,11 +59,13 @@ export const leaveGroup = async (loginToken, groupUuid) =>
 export const createGroup = async (loginToken, groupName) =>
   groupOp(loginToken, groupName, null, groupOpKind.createGroup);
 
+export const toggleVisibleGroup = async (loginToken, groupUuid) =>
+  groupOp(loginToken, "", gropUuid, groupOpKind.switchLockGroup);
+
 const groupOp = async (
   loginToken, groupName="", groupUuid=null, kind=groupOpKind.joinGroup,
 ) => {
-  console.log(groupName,groupUuid);
-  if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup) {
+  if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup || kind == groupOpKind.switchLockGroup) {
     // requires a groupUuid
     if (!groupUuid) return null;
   } else if (kind == groupOpKind.createGroup) {
