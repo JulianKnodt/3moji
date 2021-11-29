@@ -513,13 +513,18 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		var cond func(context.Context, Group) (bool, error)
 		switch req.Kind {
 		case AllGroups:
-			cond = func(context.Context, Group) (bool, error) { return true, nil }
+			cond = func(_ context.Context, g Group) (bool, error) {
+				return !g.Locked, nil
+			}
 		case JoinedGroups:
 			cond = func(ctx context.Context, g Group) (bool, error) {
 				return s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
 			}
 		case NotJoinedGroups:
 			cond = func(ctx context.Context, g Group) (bool, error) {
+				if g.Locked {
+					return false, nil
+				}
 				isMember, err := s.UserIsMemberOfGroup(ctx, user.Uuid, g.Uuid)
 				return !isMember, err
 			}
@@ -538,9 +543,6 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		// Probably need to fix later when actually using a database.
 		ctx := context.Background()
 		for _, group := range groups {
-			if group.Locked {
-				continue
-			}
 			matches, err := cond(ctx, group)
 			if !matches || err != nil {
 				continue
