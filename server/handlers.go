@@ -983,28 +983,30 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		<-buffer
 		defer func() { buffer <- struct{}{} }()
-		emojisSent, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent").Result()
+		ctx := context.Background()
+		emojisSent, err := s.RedisClient.HGetAll(ctx, "emojis_sent").Result()
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Failed to get counts: %v", err)
 			return
 		}
-		emojisSentAt, err := s.RedisClient.HGetAll(context.Background(), "emojis_sent_at").Result()
+		emojisSentAt, err := s.RedisClient.HGetAll(ctx, "emoji_sent_at").Result()
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Failed to get times: %v", err)
 			return
 		}
-		repliesSent, err := s.RedisClient.HGetAll(context.Background(), "emoji_reply").Result()
+		repliesSent, err := s.RedisClient.HGetAll(ctx, "emoji_reply").Result()
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Failed to get replies: %v", err)
 			return
 		}
 		out := SummaryResponse{
-			Counts:      make(map[string]int, len(emojisSent)),
-			Times:       make(map[string]float64, len(emojisSentAt)),
-			ReplyCounts: make(map[string]int, len(repliesSent)),
+			Counts:         make(map[string]int, len(emojisSent)),
+			Times:          make(map[string]float64, len(emojisSentAt)),
+			ReplyCounts:    make(map[string]int, len(repliesSent)),
+			MessageReplies: map[string]map[string]int{},
 		}
 		for emojis, count := range emojisSent {
 			out.Counts[emojis], err = strconv.Atoi(count)
@@ -1025,6 +1027,29 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 			if err != nil {
 				fmt.Printf("Failed to parse reply count: %v", err)
 				continue
+			}
+		}
+		emojiKeys, err := s.RedisClient.Keys(ctx, "emojis_*").Result()
+		if err == nil {
+			for _, key := range emojiKeys {
+				var emojiString string
+				_, err := fmt.Sscanf(key, "emojis_%s", &emojiString)
+				if err != nil {
+					continue
+				}
+				replyCounts := map[string]int{}
+				replyPairs, err := s.RedisClient.HGetAll(ctx, key).Result()
+				if err != nil {
+					continue
+				}
+				for reply, count := range replyPairs {
+					count, err := strconv.Atoi(count)
+					if err != nil {
+						continue
+					}
+					replyCounts[reply] = count
+				}
+				out.MessageReplies[key] = replyCounts
 			}
 		}
 

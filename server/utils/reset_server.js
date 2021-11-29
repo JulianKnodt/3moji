@@ -1,6 +1,8 @@
 // 私以外私じゃないの
 const https = require('https')
 
+
+/*
 const options = {
   hostname: "api-3moji.herokuapp.com",
   port: 443, method: 'POST',
@@ -20,3 +22,4 @@ req.on('error', error => {
 })
 
 req.end()
+*/
