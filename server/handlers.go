@@ -1049,7 +1049,7 @@ func (s *Server) SummaryHandler() http.HandlerFunc {
 					}
 					replyCounts[reply] = count
 				}
-				out.MessageReplies[key] = replyCounts
+				out.MessageReplies[emojiString] = replyCounts
 			}
 		}
 
