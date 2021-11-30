@@ -442,10 +442,11 @@ func distance(u1, u2, v1, v2 float64) float64 {
 }
 
 func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
+	ctx := context.TODO()
 	emojiString := string(e)
 	// increment count
 	emojisSentCount.Add(emojiString, 1)
-	go s.RedisClient.HIncrBy(context.TODO(), "emojis_sent", emojiString, 1)
+	go s.RedisClient.HIncrBy(ctx, "emojis_sent", emojiString, 1)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -467,14 +468,15 @@ func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 		old.(*expvar.Float).Set(newTime)
 	}
 	go s.RedisClient.HSet(
-		context.TODO(), "emoji_sent_at", emojiString, strconv.FormatFloat(newTime, 'E', -1, 64),
+		ctx, "emoji_sent_at", emojiString, strconv.FormatFloat(newTime, 'E', -1, 64),
 	)
 }
 
 func (s *Server) LogReply(r *MessageReply) {
+	ctx := context.TODO()
 	replyString := string(r.Reply)
-	go s.RedisClient.HIncrBy(context.TODO(), "emoji_reply", replyString, 1)
-	go s.RedisClient.HIncrBy(context.TODO(), r.OriginalContent.RedisKey(), replyString, 1)
+	go s.RedisClient.HIncrBy(ctx, "emoji_reply", replyString, 1)
+	go s.RedisClient.HIncrBy(ctx, r.OriginalContent.RedisKey(), replyString, 1)
 }
 
 // TODO weight the recommendations with how frequently they are sent.
