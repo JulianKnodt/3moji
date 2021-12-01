@@ -60,7 +60,7 @@ export const createGroup = async (loginToken, groupName) =>
   groupOp(loginToken, groupName, null, groupOpKind.createGroup);
 
 export const toggleVisibleGroup = async (loginToken, groupUuid) =>
-  groupOp(loginToken, "", gropUuid, groupOpKind.switchLockGroup);
+  groupOp(loginToken, "", groupUuid, groupOpKind.switchLockGroup);
 
 const groupOp = async (
   loginToken, groupName="", groupUuid=null, kind=groupOpKind.joinGroup,

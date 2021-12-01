@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView,Modal, Image, Alert } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, Pressable, ScrollView,Modal, Image, Alert, TouchableOpacity } from 'react-native';
 import { Header,Tab, TabView } from 'react-native-elements';
 import EmojiBoard from 'react-native-emoji-board';
 import { views, HeaderText } from './constants'
@@ -297,50 +297,95 @@ const MainApp = () => {
 
   const Home = () => (
       <View style={styles.container}>
-        <View style={styles.button}>
-          <Button title="📨✍️❓" onPress={() => gotoView(views.SendMsg)}/>
-        </View>
-        <View style={styles.button}>
-          <Button title="📨❗👀" onPress={() => gotoView(views.RecvMsg)}/>
-        </View>
-        <View style={styles.button}>
-          <Button title="➕👥🥰" onPress={() => gotoView(views.AddGroup)}/>
-        </View>
-        <View style={styles.button}>
-          <Button title="Log out 👋" color="#f194ff" onPress={() => Alert.alert(
-            "Log out?", "",
-            [ { text: "❌", onPress: () => {}, style: "cancel" },
-              { text: "✅", onPress: () => {
-                saveLoginToken(null);
-                setLoginToken(null);
-                clearStack();
-                setCurrentView(views.Splash);
-              }
-            }])}
-          />
+        
+        <View style={styles.mainButtons}>
+          <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={() => gotoView(views.SendMsg)}>
+              <Text style={styles.regularButtonText}>✍️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={() => gotoView(views.RecvMsg)}>
+            <Text style={styles.regularButtonText}>📨 </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.regularButton}
+            onPress={() => gotoView(views.AddGroup)}>
+            <Text style={styles.regularButtonText}>👥 </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => Alert.alert(
+                  "Log out?", "",
+                  [ { text: "❌", onPress: () => {}, style: "cancel" },
+                    { text: "✅", onPress: () => {
+                      saveLoginToken(null);
+                      setLoginToken(null);
+                      clearStack();
+                      setCurrentView(views.Splash);
+                    }
+                  }])}>
+          <Text  style={styles.regularButtonText}>👋</Text>
+          </TouchableOpacity>
         </View>
       </View>
   );
 
   const SendMsg = () => {
     return <View style={styles.container}>
-      {/* <View style={styles.mainContent}> */}
-      <Text></Text>
+     
       {joinedGroups.map(group => (
-        <View key={group.uuid} style={styles.button}>
-          <Button
-            title={group.name}
+        <View 
+        key={group.uuid}
+        style={{flexDirection:"row",alignItems:"center"}}>
+        <TouchableOpacity 
+            style={styles.regularButton}
             onPress={()=>{
               setMessaging(group);
               gotoView(views.DraftMsg);
-          }}/>
+          }}
+        >
+          <Text style={styles.regularButtonText}>
+            {group.name}
+            </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+        style={[styles.closeButton,{backgroundColor:"#b81010",width:40,height:40}]}
+
+        onPress={async() => 
+          {
+          
+            Alert.alert(
+              group.locked === null || group.locked === undefined || group.locked == false ? "Prevent new users from joining the group?" :"Allow new users to join the group?", "",
+              [ { text: "❌", onPress: () => {}, style: "cancel" },
+                { text: "✅", onPress: async () => {try{
+                  await Queries.toggleVisibleGroup(loginToken, group.uuid);
+                  getGroups();
+                } catch(e){
+                  console.log(e);
+      
+                }}
+              }
+            ])
+          
+          }
+      }
+        >
+          <Text style={[styles.regularButtonText,{fontSize:20}]}>{
+            group.locked === null || group.locked === undefined || group.locked == false ? "📖" :"📕"}
+          </Text>
+        </TouchableOpacity>
         </View>
 
       ))}
-      {/* </View> */}
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+      <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={back}
+        >
+        <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   };
 
@@ -415,9 +460,9 @@ const MainApp = () => {
     },[index])
     return <View style={styles.container}>
       <Tab value={index} onChange={setIndex}>
-        <Tab.Item title="📬‼️" />
-        <Tab.Item title="✉️↩️"/>
-        <Tab.Item title="💬🤘"/>
+        <Tab.Item title="📥" />
+        <Tab.Item title="📤"/>
+        <Tab.Item title="↩️"/>
       </Tab>
       <TabView value={index-1} onChange={setIndex} >
         <TabView.Item styles={styles.mainContent}>
@@ -429,22 +474,28 @@ const MainApp = () => {
                   <Text style={styles.inviteText}>{message.source.name}📲{message.sentTo}: {message.emojis}?</Text>
                   <Text>{message.location}</Text>
                   <View style={styles.reactContainer}>
-                    <View style={styles.inviteButton}>
-                      <Button title="👍" onPress={()=>{
-                        setSendEmoji("👍");
-                        setMessageIndex(i);
-                        setMessage(message);
-                        }}/>
-                    </View>
-                    <View style={styles.inviteButton}>
-                      <Button title="👎" onPress={()=>{
-                        setSendEmoji("👎");
-                        setMessageIndex(i);
-                        setMessage(message)
-                        }}/>
-                    </View>
+                    <TouchableOpacity 
+                    style={styles.replyButton}
+                    onPress={()=>{
+                      setSendEmoji("👍");
+                      setMessageIndex(i);
+                      setMessage(message);
+                      }}
+                    >
+                      <Text>👍</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                    style={styles.replyButton}
+                    onPress={()=>{
+                      setSendEmoji("👎");
+                      setMessageIndex(i);
+                      setMessage(message)
+                      }}
+                    >
+                      <Text>👎</Text> 
+                    </TouchableOpacity>
                     <TextInput
-                      style={styles.inviteInput}
+                      style={styles.replyButton}
                       textAlign={'center'}
                       onChangeText={(text)=>{onEnterText(text,message,i)}}
                       placeholder={"➕"}
@@ -483,9 +534,12 @@ const MainApp = () => {
           </View>
         </TabView.Item>
       </TabView>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+      <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={back}
+        >
+        <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     {/* <EmojiBoard showBoard={show} onClick={(emoji)=>{replyMessage(message,uuid,emoji.code)}}/> */}
   </View>};
 
@@ -511,23 +565,32 @@ const MainApp = () => {
   const AddGroup = () => {
     return <View style={styles.container}>
       {notJoinedGroups.map(group => (
-        <View key={group.uuid} style={styles.button}>
-          <Button
-            title={group.name}
-            onPress={()=>{
-              setViewingGroup(group);
-              gotoView(views.ViewGroup);
-            }}
-          />
-        </View>
+        <TouchableOpacity 
+              key={group.uuid}
+              style={styles.regularButton}
+              onPress={()=>{
+                setViewingGroup(group);
+                gotoView(views.ViewGroup);
+              }}
+          >
+          <Text style={styles.regularButtonText}>
+            {group.name}
+            </Text>
+        </TouchableOpacity>
 
       ))}
-      <View style={styles.button}>
-        <Button title="🆕👥📨" onPress={()=>{gotoView(views.CreateGroup)}}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+      <TouchableOpacity 
+                style={[styles.closeButton,{backgroundColor:"#2196F3"}]}
+                onPress={()=>{gotoView(views.CreateGroup)}}
+        >
+        <Text style={styles.regularButtonText}>🆕</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={back}
+        >
+        <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   };
   const ViewGroup = ({viewingGroup}) => {
@@ -535,20 +598,25 @@ const MainApp = () => {
     return <View style={styles.container}>
       <Text>{viewingGroup.name}</Text>
       <Text>Members:{Object.values(viewingGroup.users).join(",")}</Text>
-      <View style={styles.button}>
-        <Button title="Join"
-          onPress={async ()=>{
-              const resp = await Queries.joinGroup(loginToken,viewingGroup.uuid);
-              if (resp instanceof Queries.Error) {
-                return alert(resp.msg);
-              }
-              getGroups();
-              back();
-          }}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+      <TouchableOpacity
+       style={styles.regularButton}
+       onPress={async ()=>{
+        const resp = await Queries.joinGroup(loginToken,viewingGroup.uuid);
+        if (resp instanceof Queries.Error) {
+          return alert(resp.msg);
+        }
+        getGroups();
+        back();
+    }}
+      >
+        <Text style={[styles.regularButtonText,{fontSize:25}]}> Join</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+          style={styles.closeButton}
+          onPress={back}
+          >
+          <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   }
   const CreateGroup = () => {
@@ -561,19 +629,25 @@ const MainApp = () => {
         value={groupName}
         onChangeText={setGroupName}
       />
-      <View style={styles.button}>
-        <Button title="Create" onPress={async()=>{
+      <TouchableOpacity
+        style={styles.regularButton}
+        onPress={async()=>{
           const resp = await Queries.createGroup(loginToken,groupName);
           if (resp instanceof Queries.Error) {
             return alert(resp.msg);
           }
           getGroups();
           back();
-        }}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+        }}
+      >
+        <Text style={[styles.regularButtonText,{fontSize:25}]}>Create </Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+          style={styles.closeButton}
+          onPress={back}
+          >
+          <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   };
   if (currentView == views.Splash) return <Splash gotoView={gotoView.bind(this)}/>;
@@ -691,17 +765,18 @@ const DraftMsg = props => {
         value={emojis}
         placeholder="✍️😀❓"
     />
-    {/* <Pressable onPress={() => setShow(!show)}>
-        <Text>{displayEmoji(emojis)}</Text>
-    </Pressable> */}
-    {/* <EmojiBoard showBoard={show} onClick={onClick} onRemove={onRemove} /> */}
     {emojiError !== "" && <Text>{emojiError}</Text>}
-    <View style={styles.button}>
-      <Button title="Send" onPress={sendEmoji}/>
-    </View>
-    <View style={styles.button}>
-      {loc ? <Text>{loc}</Text> : null}
-      <Button title={`${loc ? "➖" : "➕"}🗺📍`} onPress={async () => {
+    <TouchableOpacity
+      style={styles.regularButton}
+      onPress={sendEmoji}
+      >
+      <Text style={[styles.regularButtonText,{fontSize:25}]}>Send</Text>
+    </TouchableOpacity>
+    {loc ? <Text style={[styles.regularButtonText,{color:"black"}]}>{loc}</Text> : null}
+
+    <TouchableOpacity
+      style={styles.regularButton}
+      onPress={async () => {
         if(loc){
           setLoc("")
           return;
@@ -711,26 +786,49 @@ const DraftMsg = props => {
         if (!l || l.length == 0) return alert("Could not get location!")
         const locString = l[0].street ? `${l[0].name}, ${l[0].street}` : `${l[0].name}`;
         setLoc(locString);
-      }}/>
-    </View>
+      }}
+    >
+      
+      <Text style={styles.regularButtonText}>{`${loc ? "➖" : "➕"}🗺📍`} </Text>
+    
+    </TouchableOpacity>
+
     {recommendations.map((recommendation,i)=>(
-      <View key={i} style={styles.button}>
-        <Button title={recommendation} color="#5ac18e" onPress={()=>{setEmoji(recommendation)}}></Button>
-      </View>
+      <TouchableOpacity 
+      style={[styles.regularButton,{backgroundColor:"#5ac18e"}]}
+      onPress={()=>{setEmoji(recommendation)}}
+      key={i}
+      >
+        <Text style={styles.regularButtonText}>{recommendation}</Text>
+      </TouchableOpacity>
     ))}
-    <View style={styles.button}>
-      <Button title="Leave Group" color="#b81010" onPress={async () => {
-        const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
-        if (resp instanceof Queries.Error) {
-          return alert(resp.msg);
-        }
-        getGroups();
-        back();
-      }}/>
+    <View style={{flexDirection:"row"}}>
+      <TouchableOpacity 
+        style={[styles.closeButton,{backgroundColor:"#b81010"}]}
+        onPress={() => Alert.alert(
+          "Leave group?", "",
+          [ { text: "❌", onPress: () => {}, style: "cancel" },
+            { text: "✅", onPress: async () => {
+              const resp = await Queries.leaveGroup(loginToken, messaging.uuid, loc);
+              if (resp instanceof Queries.Error) {
+                return alert(resp.msg);
+              }
+              getGroups();
+              back();
+            }
+          }
+        ])}
+      >
+        <Text style={styles.regularButtonText}>🚪</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+          style={styles.closeButton}
+          onPress={back}
+          >
+          <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
-    <View style={styles.button}>
-      <Button title="Back" color="#f194ff" onPress={back}/>
-    </View>
+    
   </View>
 };
 

@@ -137,5 +137,42 @@ export const styles = StyleSheet.create({
       fontWeight: "bold",
       textAlign: "center"
     },
+    regularButton: { 
+        height: 50, 
+        width: 200, 
+        backgroundColor:"#2196F3",
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 1200,
+        margin: 10,
+    },
+    closeButton:{
+      height: 50, 
+      width: 50, 
+      backgroundColor:"#F194FF",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 1200,
+      margin: 10,
+    },
+    replyButton:{
+      height: 40, 
+      width: 40, 
+      backgroundColor:"#2196F3",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 1200,
+      // padding:15,
+      margin: 10,
+    },
+    regularButtonText: {
+      fontSize: 30,
+      color:"white"
+    },
+    mainButtons:{
+      flex:1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
   });
   
