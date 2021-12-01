@@ -261,9 +261,18 @@ func (s *Server) UserIsMemberOfGroup(ctx context.Context, user, group Uuid) (boo
 }
 
 // Finds the uuid of all users in a group.
-func (s *Server) UsersInGroup(ctx context.Context, group Uuid) ([]Uuid, error) {
+func (s *Server) UsersInGroupRaw(ctx context.Context, group Uuid) ([]string, error) {
 	groupUserKey := fmt.Sprintf("%s_group_users", group)
 	uuidStrings, err := s.RedisClient.SMembers(ctx, groupUserKey).Result()
+	if err != nil {
+		return nil, err
+	}
+	return uuidStrings, nil
+}
+
+// Finds the uuid of all users in a group.
+func (s *Server) UsersInGroup(ctx context.Context, group Uuid) ([]Uuid, error) {
+	uuidStrings, err := s.UsersInGroupRaw(ctx, group)
 	if err != nil {
 		return nil, err
 	}

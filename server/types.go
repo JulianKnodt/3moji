@@ -46,7 +46,7 @@ type Group struct {
 	// TODO should this have a location attached as well?
 
 	// Whether new users can join this group or not. It will never be displayed
-	Locked bool `json:"locked,omitempty"`
+	Locked bool `json:"locked"`
 }
 
 // Message is a struct that represents an emoji message between two people
@@ -55,6 +55,8 @@ type Message struct {
 	Uuid Uuid `json:"uuid,string"`
 	// Name of who this was sent to
 	SentTo string `json:"sentTo"`
+	// Group which this was sent, or invalid Uuid
+	Group Uuid `json:"groupSentTo,omitempty"`
 
 	Emojis   EmojiContent `json:"emojis"`
 	Source   User         `json:"source"`
@@ -79,6 +81,7 @@ func MessageRedisKey(uuid Uuid) string {
 
 type MessageReply struct {
 	Message *Message `json:"message"`
+	Group   Uuid     `json:"group"`
 
 	// This is so the user can see what they originally sent
 	OriginalContent EmojiContent `json:"originalContent"`
@@ -107,6 +110,8 @@ func (lt *LoginToken) Expired() bool {
 // at some point.
 type Uuid uint64
 
+const InvalidUuid = Uuid(0)
+
 func generateUuid() (Uuid, error) {
 	uuidBytes := [8]byte{}
 	if _, err := rand.Read(uuidBytes[:]); err != nil {
@@ -115,6 +120,10 @@ func generateUuid() (Uuid, error) {
 
 	uuid := binary.BigEndian.Uint64(uuidBytes[:])
 	return Uuid(uuid), nil
+}
+
+func (u Uuid) IsValid() bool {
+	return u != InvalidUuid
 }
 
 // Convert this Uuid to a string

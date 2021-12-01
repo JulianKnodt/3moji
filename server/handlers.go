@@ -263,12 +263,15 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			OriginalContent: originalMessage.Emojis,
 			Reply:           req.Reply,
 			From:            *user,
+			Group:           originalMessage.Group,
 		}
 		source := originalMessage.Source
 		s.UserToReplies[source.Uuid] = append(s.UserToReplies[source.Uuid], replyUuid)
 		s.UserToReplies[user.Uuid] = append(s.UserToReplies[user.Uuid], replyUuid)
 		// TODO need to add the ability to add group notifications here
-		go s.sendAckPushNotification(source.Uuid, user.Name, originalMessage.Emojis, req.Reply)
+		go s.sendAckPushNotification(
+			source.Uuid, originalMessage.Group, user.Name, originalMessage.Emojis, req.Reply,
+		)
 		go s.LogReply(s.Replies[replyUuid])
 
 		w.WriteHeader(200)
@@ -278,21 +281,39 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 
 func (s *Server) sendAckPushNotification(
 	senderUuid Uuid,
+	groupUuid Uuid,
 	responderName string,
 	original EmojiContent,
 	reply EmojiReply,
 ) {
-	notifToken, err := s.RedisClient.HGet(context.Background(), "user_notif_tokens", senderUuid.String()).Result()
+	ctx := context.Background()
+	notifToken, err := s.RedisClient.HGet(ctx, "user_notif_tokens", senderUuid.String()).Result()
 	if err != nil {
 		fmt.Printf("Failed to get user notif token: %v", err)
 		return
 	} else if notifToken == "" {
 		return
 	}
+	to := []expo.ExponentPushToken{expo.ExponentPushToken(notifToken)}
+	if groupUuid.IsValid() {
+		users, err := s.UsersInGroupRaw(ctx, groupUuid)
+		if err == nil {
+			notifTokens, err := s.RedisClient.HMGet(ctx, "user_notif_tokens", users...).Result()
+			if err == nil {
+				for _, notifToken := range notifTokens {
+					nt, ok := notifToken.(string)
+					if !ok {
+						continue
+					}
+					to = append(to, expo.ExponentPushToken(nt))
+				}
+			}
+		}
+	}
 
 	pushBody := fmt.Sprintf("%s: %s ↩️ %s", responderName, reply, original)
 	pushMsg := expo.PushMessage{
-		To:       []expo.ExponentPushToken{expo.ExponentPushToken(notifToken)},
+		To:       to,
 		Body:     pushBody,
 		Sound:    "default",
 		Title:    "📨↩️",
@@ -733,6 +754,7 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 				return
 			}
 			msg.SentTo = group.Name
+			msg.Group = group.Uuid
 			if !exists {
 				w.WriteHeader(401)
 				fmt.Fprint(w, "Group does not exist")
