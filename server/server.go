@@ -17,11 +17,6 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-var (
-	emojisSentAt    = expvar.NewMap("emojisSentAt")
-	emojisSentCount = expvar.NewMap("emojisSentCount")
-)
-
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -51,8 +46,6 @@ type Server struct {
 	// Replies waiting for a given user
 	UserToReplies map[Uuid][]Uuid
 	Replies       map[Uuid]*MessageReply
-
-	EmojiSendTime map[EmojiContent]float64
 
 	// A long living redis client for using as a persistent store.
 	RedisClient *redis.Client
@@ -94,8 +87,6 @@ func NewServer() *Server {
 
 		UserToReplies: map[Uuid][]Uuid{},
 		Replies:       map[Uuid]*MessageReply{},
-
-		EmojiSendTime: map[EmojiContent]float64{},
 
 		RedisClient: rdb,
 	}
@@ -444,47 +435,63 @@ func distance(u1, u2, v1, v2 float64) float64 {
 func (s *Server) LogEmojiContent(e EmojiContent, localTime float64) {
 	ctx := context.TODO()
 	emojiString := string(e)
-	// increment count
-	emojisSentCount.Add(emojiString, 1)
-	go s.RedisClient.HIncrBy(ctx, "emojis_sent", emojiString, 1)
+	go s.RedisClient.HIncrBy(ctx, "emojis_sent", emojiString, 1).Err()
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	prevTime, exists := s.EmojiSendTime[e]
-	if !exists {
-		s.EmojiSendTime[e] = localTime
+
+	exists, err := s.RedisClient.HExists(ctx, "emoji_sent_at", emojiString).Result()
+	if err != nil {
 		return
 	}
-	oldU, oldV := to2DTimeModular(prevTime)
-	newU, newV := to2DTimeModular(localTime)
-	u := weightedAverage(oldU, newU, 0.01)
-	v := weightedAverage(oldV, newV, 0.01)
-	newTime := from2DTimeModular(u, v)
-	s.EmojiSendTime[e] = newTime
-	old := emojisSentAt.Get(emojiString)
-	if old == nil {
-		emojisSentAt.AddFloat(emojiString, newTime)
+	var u float64
+	var v float64
+	if exists {
+		timeString, err := s.RedisClient.HGet(ctx, "emoji_sent_at", emojiString).Result()
+		if err != nil {
+			return
+		}
+		timeRaw, err := strconv.ParseFloat(timeString, 64)
+		if err != nil {
+			return
+		}
+		oldU, oldV := to2DTimeModular(timeRaw)
+		newU, newV := to2DTimeModular(localTime)
+		u = weightedAverage(oldU, newU, 0.01)
+		v = weightedAverage(oldV, newV, 0.01)
 	} else {
-		old.(*expvar.Float).Set(newTime)
+		u, v = to2DTimeModular(localTime)
 	}
-	go s.RedisClient.HSet(
+	newTime := from2DTimeModular(u, v)
+	err = s.RedisClient.HSet(
 		ctx, "emoji_sent_at", emojiString, strconv.FormatFloat(newTime, 'E', -1, 64),
-	)
+	).Err()
+	// TODO log error
 }
 
 func (s *Server) LogReply(r *MessageReply) {
 	ctx := context.TODO()
 	replyString := string(r.Reply)
-	go s.RedisClient.HIncrBy(ctx, "emoji_reply", replyString, 1)
-	go s.RedisClient.HIncrBy(ctx, r.OriginalContent.RedisKey(), replyString, 1)
+	go s.RedisClient.HIncrBy(ctx, "emoji_reply", replyString, 1).Err()
+	go s.RedisClient.HIncrBy(ctx, r.OriginalContent.RedisKey(), replyString, 1).Err()
 }
 
 // TODO weight the recommendations with how frequently they are sent.
 func (s *Server) FindNearRecommendations(amt int, localTime float64) []EmojiContent {
+	ctx := context.TODO()
 	u, v := to2DTimeModular(localTime)
 	out := make([]EmojiContent, 0, amt)
-	s.mu.Lock()
-	for cntnt, t := range s.EmojiSendTime {
+	vals, err := s.RedisClient.HRandField(ctx, "emoji_sent_at", 75, true).Result()
+	if err != nil {
+		return out
+	}
+
+	for i := 0; i < len(vals); i += 2 {
+		cntnt := EmojiContent(vals[i])
+		t, err := strconv.ParseFloat(vals[i+1], 64)
+		if err != nil {
+			continue
+		}
 		newU, newV := to2DTimeModular(t)
 		dist := distance(u, newU, v, newV)
 		if dist < 0.05 {
@@ -494,6 +501,5 @@ func (s *Server) FindNearRecommendations(amt int, localTime float64) []EmojiCont
 			}
 		}
 	}
-	s.mu.Unlock()
 	return out
 }
