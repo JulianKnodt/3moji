@@ -727,7 +727,7 @@ const DraftMsg = props => {
 
   const sendEmoji = async() => {
     // console.log("emojis",emojis)
-    if (emojis.length != 6) return setEmojiError("You need to send exactly three emojis");
+    if (emojiLen(emojis) != 3) return setEmojiError("You need to send exactly three emojis");
     const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
     if (resp instanceof Queries.Error) {
       alert(resp.msg);
@@ -740,7 +740,7 @@ const DraftMsg = props => {
       return;
     }
     const newText = emoji.substring(emojis.length);
-    if (emojis.length >= 6) setEmojiError("You can only add three emojis");
+    if (emojiLen(emojis) >= 3) setEmojiError("You can only add three emojis");
     else if(!emojiRegex.test(newText)){
       // console.log(newText)
       setEmojiError("You can only send emojis");
