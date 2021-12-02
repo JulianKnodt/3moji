@@ -126,10 +126,12 @@ export const styles = StyleSheet.create({
     },
     buttonAgree: {
       backgroundColor: "#2196F3",
+      borderRadius: 1200,
       margin: 10
     },
     buttonDisagree: {
       backgroundColor: "#F194FF",
+      borderRadius: 1200,
       margin: 10
     },
     textStyle: {

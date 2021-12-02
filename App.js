@@ -242,16 +242,22 @@ const MainApp = () => {
         secureTextEntry={true}
         onChangeText={setPassword}
       />
-      <View style={styles.button}>
-        <Button title="Sign Up" onPress={async () =>{
-        setModalVisible(true);
-      }
-        }/>
-      </View>
+      <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={async () =>{
+                setModalVisible(true);
+              }
+                }
+                >
+        <Text style={styles.regularButtonText}>Sign Up</Text>
+      </TouchableOpacity>
 
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={() => back()}/>
-      </View>
+      <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={back}
+        >
+        <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   };
 
@@ -285,13 +291,20 @@ const MainApp = () => {
         secureTextEntry={true}
         onChangeText={setPassword}
       />
-      <View style={styles.button}>
-        <Button title="Login" onPress={async () => {
-          login(email, password).catch(err => alert("Something went wrong 😱!\n" + err))}}/>
-      </View>
-      <View style={styles.button}>
-        <Button title="Back" color="#f194ff" onPress={back}/>
-      </View>
+      <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={async () => {
+                login(email, password).catch(err => alert("Something went wrong 😱!\n" + err))}}
+        >
+                
+        <Text style={styles.regularButtonText}> Login</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={back}
+        >
+        <Text style={styles.regularButtonText}>👈</Text>
+      </TouchableOpacity>
     </View>
   };
 
@@ -697,13 +710,18 @@ const loadLoginToken = async () => {
 
 const Splash = props => {
   return <View style={styles.container}>
-    <Text>📭📩🙌!</Text>
-    <View style={styles.button}>
-      <Button title="Sign In" onPress={() => props.gotoView(views.SignIn)}/>
-    </View>
-    <View style={styles.button}>
-      <Button title="Sign Up" onPress={() => props.gotoView(views.SignUp)}/>
-    </View>
+    <Text style={styles.regularButtonText}>📭📩🙌!</Text>
+    <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={() => props.gotoView(views.SignIn)}
+      >
+      <Text style={styles.regularButtonText}>Sign In</Text>
+    </TouchableOpacity>
+    <TouchableOpacity 
+              style={styles.regularButton}
+              onPress={() => props.gotoView(views.SignUp)}>
+      <Text style={styles.regularButtonText}>Sign Up</Text>
+    </TouchableOpacity>
     <StatusBar style="auto"/>
   </View>
 };

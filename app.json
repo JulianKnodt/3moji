@@ -18,7 +18,8 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "103"
+      "buildNumber": "103",
+      "bundleIdentifier": "com.3moji.3moji"
     },
     "android": {
       "adaptiveIcon": {
