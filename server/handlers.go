@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -641,13 +642,19 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🌌🚶🌃": struct{}{},
 			}
 		}
-		for _, v := range s.FindNearRecommendations(5, req.LocalTime) {
+		for _, v := range s.FindNearRecommendations(10, req.LocalTime) {
 			recs[v] = struct{}{}
 		}
 		var resp RecommendationResponse
 		for rec := range recs {
 			resp.Recommendations = append(resp.Recommendations, rec)
 		}
+		for i := range resp.Recommendations {
+			j := rand.Intn(i + 1)
+			resp.Recommendations[i], resp.Recommendations[j] = resp.Recommendations[j], resp.Recommendations[i]
+		}
+		resp.Recommendations = resp.Recommendations[:5]
+
 		enc := json.NewEncoder(w)
 		enc.Encode(resp)
 		return
