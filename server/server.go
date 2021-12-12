@@ -419,17 +419,12 @@ func (s *Server) MessageForReply(ctx context.Context, reply *MessageReply) (*Mes
 
 // time is 0 -> 24, returns two values which represents modular clock position
 func to2DTimeModular(t float64) (float64, float64) {
-	adj := t * math.Pi / 12.0
-	return math.Sincos(adj)
+	return math.Sincos(t * math.Pi / 12.0)
 }
 
+// Converts time from the 2 dimensional representation back into an angle representation
 func from2DTimeModular(u, v float64) float64 {
-	// normalize u and v
-	dist := math.Sqrt(u*u + v*v)
-	if math.Abs(dist) < 1e-5 {
-		dist = 1e-5
-	}
-	return 12 / math.Pi * math.Asin(u/dist)
+	return 12 / math.Pi * math.Atan2(u, v)
 }
 
 func weightedAverage(old, newVal, alpha float64) float64 {
