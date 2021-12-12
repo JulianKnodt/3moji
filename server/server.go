@@ -347,7 +347,8 @@ func (s *Server) Login(ctx context.Context, userEmail Email, hashedPassword stri
 	}
 
 	loginToken := LoginToken{
-		ValidUntil: time.Now().Add(5 * 24 * time.Hour).Unix(),
+		// make the token valid for extremely long periods of time.
+		ValidUntil: time.Now().Add(365 * 24 * time.Hour).Unix(),
 		Uuid:       uuid,
 		UserEmail:  userEmail,
 	}
