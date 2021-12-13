@@ -424,7 +424,7 @@ func to2DTimeModular(t float64) (float64, float64) {
 
 // Converts time from the 2 dimensional representation back into an angle representation
 func from2DTimeModular(u, v float64) float64 {
-	return 12 / math.Pi * math.Atan2(u, v)
+	return math.Abs(math.Mod(12 / math.Pi * math.Atan2(u, v), 24))
 }
 
 func weightedAverage(old, newVal, alpha float64) float64 {
