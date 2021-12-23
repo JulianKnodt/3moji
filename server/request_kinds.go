@@ -12,6 +12,7 @@ type ListPeopleRequest struct {
 	Amount     int            `json:"amount"`
 	Kind       ListPeopleKind `json:"kind"`
 	LoginToken LoginToken     `json:"loginToken"`
+	Filter     MatchFilter    `json:"filter"`
 }
 
 type ListPeopleResponse struct {
@@ -124,6 +125,7 @@ type ListGroupRequest struct {
 	Kind       ListGroupKind `json:"kind"`
 	Amount     int           `json:"amount"`
 	LoginToken LoginToken    `json:"loginToken"`
+	Filter     MatchFilter   `json:"filter"`
 }
 
 type ListGroupResponse struct {

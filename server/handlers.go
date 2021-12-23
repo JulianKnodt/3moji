@@ -154,6 +154,8 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Unexpected list kind: %v", req.Kind)
 			return
 		}
+		matchFn := req.Filter.MatchFunc()
+		cond = func(u *User) bool { return cond(u) && matchFn(u.Name) }
 
 		if req.Kind == OnlyFriends {
 			for uuid := range s.Friends[user.Uuid] {
@@ -555,6 +557,14 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			fmt.Fprint(w, "Invalid op kind")
 			return
 		}
+		matchFn := req.Filter.MatchFunc()
+		cond = func(ctx context.Context, g Group) (bool, error) {
+			if !matchFn(g.Name) {
+				return false, nil
+			}
+			return cond(ctx, g)
+		}
+
 		groups, err := s.GetGroups(context.Background())
 		if err != nil {
 			w.WriteHeader(500)

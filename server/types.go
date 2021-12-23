@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/mail"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -134,4 +135,32 @@ func (u Uuid) String() string {
 func UuidFromString(uuid string) (Uuid, error) {
 	u, err := strconv.ParseUint(uuid, 10, 64)
 	return Uuid(u), err
+}
+
+// What kind of match
+type MatchKind uint16
+
+const (
+	MatchAll = iota
+	MatchPrefix
+)
+
+type MatchFilter struct {
+	Match string    `json:"match"`
+	Kind  MatchKind `json:"matchKind"`
+}
+
+func (mf MatchFilter) MatchFunc() func(string) bool {
+	if mf.Match == "" {
+		return func(string) bool { return true }
+	}
+	switch mf.Kind {
+	case MatchAll:
+		return func(s string) bool { return strings.Contains(s, mf.Match) }
+	case MatchPrefix:
+		return func(s string) bool { return strings.HasPrefix(s, mf.Match) }
+	default:
+		// Don't want to panic, so return match nothing if it's unknown
+		return func(string) bool { return false }
+	}
 }
