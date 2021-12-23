@@ -14,15 +14,26 @@ export class Error {
   }
 }
 
+const matchKind = {
+  matchAll: 0,
+  matchPrefix: 1,
+};
+
+const createMatch(match, kind=matchKind.matchAll) => ({ match, kind });
+
 export const listPeopleKind = {
   onlyFriends: 0,
   all: 1,
   notFriends: 2,
 }
 
-export const getPeople = async (loginToken, amount=50, kind=listPeopleKind.onlyFriends) => {
-  const req = { amount, kind, loginToken };
-  console.log(req);
+export const getPeople = async (
+  loginToken,
+  amount=50,
+  kind=listPeopleKind.onlyFriends,
+  match="",
+) => {
+  const req = { amount, kind, loginToken, filter: createMatch(match), };
   const resp = await fetch(serverURL + "api/v1/list_friends/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
@@ -35,8 +46,13 @@ export const listGroupKind = {
   notJoinedGroups: 2,
 };
 
-export const getGroups = async (loginToken, amount=50, kind=listGroupKind.allGroups) => {
-  const req = { amount, kind, loginToken };
+export const getGroups = async (
+  loginToken,
+  amount=50,
+  kind=listGroupKind.allGroups,
+  match="",
+) => {
+  const req = { amount, kind, loginToken, filter: createMatch(match) };
   const resp = await fetch(serverURL + "api/v1/list_groups/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
@@ -63,9 +79,14 @@ export const toggleVisibleGroup = async (loginToken, groupUuid) =>
   groupOp(loginToken, "", groupUuid, groupOpKind.switchLockGroup);
 
 const groupOp = async (
-  loginToken, groupName="", groupUuid=null, kind=groupOpKind.joinGroup,
+  loginToken,
+  groupName="",
+  groupUuid=null,
+  kind=groupOpKind.joinGroup,
 ) => {
-  if (kind == groupOpKind.joinGroup || kind == groupOpKind.leaveGroup || kind == groupOpKind.switchLockGroup) {
+  if (kind == groupOpKind.joinGroup ||
+    kind == groupOpKind.leaveGroup ||
+    kind == groupOpKind.switchLockGroup) {
     // requires a groupUuid
     if (!groupUuid) return null;
   } else if (kind == groupOpKind.createGroup) {
@@ -87,7 +108,6 @@ const localTime = () => {
 
 export const sendMsg = async (loginToken, emojis, dstUuid, loc="", toGroup=true) => {
   const recipientKind = toGroup ? 0 : 1;
-  // TODO message is not just a string but a complex object.
   const message = {
     uuid: loginToken.uuid,
     emojis: emojis,
@@ -113,8 +133,7 @@ export const recvMsg = async (loginToken) => {
 
 export const ackMsg = async (msgID, reply, loginToken) => {
   const req = { msgID, reply, loginToken };
-  console.log("reply",msgID,reply);
-  if(reply === "") return;
+  if (reply == "") return;
   const resp = await fetch(serverURL + "api/v1/ack_msg/", {
     method: 'POST', headers, body: JSON.stringify(req),
   });
@@ -167,11 +186,11 @@ export const registerForPushNotifications = async loginToken => {
     let finalStatus = existingStatus;
     if (existingStatus !== granted)
       finalStatus = (await Notifications.requestPermissionsAsync()).status;
-  
+
     if (finalStatus !== granted) return alert('Failed to get push token for push notification!');
     const token = (await Notifications.getExpoPushTokenAsync()).data;
     // just re-get token each time?
-  
+
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
         name: 'default',
@@ -182,11 +201,9 @@ export const registerForPushNotifications = async loginToken => {
     }
     const req = { token, loginToken, kind: notifTokenActionKind.add, };
     const dst = serverURL + "api/v1/push_token/";
-    const resp = await fetch(dst, {
-      method: 'POST', headers, body: JSON.stringify(req),
-    });
+    const resp = await fetch(dst, { method: 'POST', headers, body: JSON.stringify(req) });
     return handleResp(resp, true);
-  } catch(e){
+  } catch (e) {
     return null
   }
 };

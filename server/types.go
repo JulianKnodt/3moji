@@ -147,7 +147,7 @@ const (
 
 type MatchFilter struct {
 	Match string    `json:"match"`
-	Kind  MatchKind `json:"matchKind"`
+	Kind  MatchKind `json:"kind"`
 }
 
 func (mf MatchFilter) MatchFunc() func(string) bool {
