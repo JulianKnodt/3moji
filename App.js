@@ -92,9 +92,8 @@ const MainApp = () => {
         return;
       setLoginToken(token);
       setCurrentView(views.Home);
-      Queries.recvMsg(token).then((resp) => {
-        console.log("recvMsg", resp);
-      });
+      const recvMsg = Queries.recvMsg(token);
+      if (recvMsg instanceof Queries.Error) return alert(recvMsg);
     });
   }, []);
   const CommonHeader = (props) => {
@@ -116,7 +115,7 @@ const MainApp = () => {
       return alert(friends.msg);
     } else setFriends(friends);
     // TODO fetch invites
-    setInvites([{ name: "A group", message: "🥞🍳🥓" }]);
+    // setInvites([{ name: "A group", message: "🥞🍳🥓" }]);
   };
 
   const getGroups = async () => {
@@ -164,7 +163,6 @@ const MainApp = () => {
         loginToken
       );
       if (pushNotifError !== null) alert(pushNotifError.msg);
-      console.log(pushNotifError);
     })();
   }, [loginToken]);
 
@@ -392,65 +390,80 @@ const MainApp = () => {
   );
 
   const SendMsg = () => {
+    const [index, setIndex] = React.useState(0);
+    useEffect(() => {
+      if (index < 0) setIndex(0);
+    }, [index]);
     return (
       <View style={styles.container}>
-        {joinedGroups.map((group) => (
-          <View
-            key={group.uuid}
-            style={{ flexDirection: "row", alignItems: "center" }}
-          >
-            <TouchableOpacity
-              style={styles.regularButton}
-              onPress={() => {
-                setMessaging(group);
-                gotoView(views.DraftMsg);
-              }}
-            >
-              <Text style={styles.regularButtonText}>{group.name}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.closeButton,
-                { backgroundColor: "#b81010", width: 40, height: 40 },
-              ]}
-              onPress={async () => {
-                Alert.alert(
-                  group.locked === null ||
-                    group.locked === undefined ||
-                    group.locked == false
-                    ? "Prevent new users from joining the group?"
-                    : "Allow new users to join the group?",
-                  "",
-                  [
-                    { text: "❌", onPress: () => {}, style: "cancel" },
-                    {
-                      text: "✅",
-                      onPress: async () => {
-                        try {
-                          await Queries.toggleVisibleGroup(
-                            loginToken,
-                            group.uuid
-                          );
-                          getGroups();
-                        } catch (e) {
-                          console.log(e);
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <Text style={[styles.regularButtonText, { fontSize: 20 }]}>
-                {group.locked === null ||
-                group.locked === undefined ||
-                group.locked == false
-                  ? "📖"
-                  : "📕"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+        <Tab value={index} onChange={setIndex}>
+          <Tab.Item title="👥" />
+          <Tab.Item title="👤" />
+        </Tab>
+        <TabView value={index} onChange={setIndex}>
+          <TabView.Item>
+            <View style={styles.mainContent}>
+              {joinedGroups.map((group) => (
+                <View
+                  key={group.uuid}
+                  style={{ flexDirection: "row", alignItems: "center" }}
+                >
+                  <TouchableOpacity
+                    style={styles.regularButton}
+                    onPress={() => {
+                      setMessaging(group);
+                      gotoView(views.DraftMsg);
+                    }}
+                  >
+                    <Text style={styles.regularButtonText}>{group.name}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.closeButton,
+                      { backgroundColor: "#b81010", width: 40, height: 40 },
+                    ]}
+                    onPress={async () => {
+                      Alert.alert(
+                        group.locked === null ||
+                          group.locked === undefined ||
+                          group.locked == false
+                          ? "Prevent new users from joining the group?"
+                          : "Allow new users to join the group?",
+                        "",
+                        [
+                          { text: "❌", onPress: () => {}, style: "cancel" },
+                          {
+                            text: "✅",
+                            onPress: async () => {
+                              try {
+                                await Queries.toggleVisibleGroup(
+                                  loginToken,
+                                  group.uuid
+                                );
+                                getGroups();
+                              } catch (e) {
+                                console.log(e);
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={[styles.regularButtonText, { fontSize: 20 }]}>
+                      {group.locked === null ||
+                      group.locked === undefined ||
+                      group.locked == false
+                        ? "📖"
+                        : "📕"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </TabView.Item>
+          <TabView.Item />
+        </TabView>
         <TouchableOpacity style={styles.closeButton} onPress={back}>
           <Text style={styles.regularButtonText}>👈</Text>
         </TouchableOpacity>
@@ -488,54 +501,49 @@ const MainApp = () => {
         setEmojiError("");
       }
     };
-    const getMessages = () => {
-      Queries.recvMsg(loginToken).then((resp) => {
-        if (resp == null) {
+    const getMessages = async () => {
+      const resp = await Queries.recvMsg(loginToken);
+      if (resp == null || resp instanceof Queries.Error) {
+        setMessages([]);
+        setReplies([]);
+      } else {
+        if (resp.newMessages == null) {
           setMessages([]);
-          setReplies([]);
+          setSendEmoji("");
+          setEmojiError("");
         } else {
-          if (resp.newMessages == null) {
-            setMessages([]);
-            setSendEmoji("");
-            setEmojiError("");
-          } else {
-            const received = resp.newMessages.filter(
-              (nw) => nw.source.email != loginToken.userEmail
-            );
-            setMessages(received);
-            setSendEmoji("");
-            setEmojiError("");
-          }
-          if (resp.newReplies == null) {
-            setReplies([]);
-            setSents([]);
-          } else {
-            setSents(
-              resp.newReplies.filter(
-                (nr) => nr.from.email == loginToken.userEmail
-              )
-            );
-            setReplies(
-              resp.newReplies.filter(
-                (nr) => nr.message.source.email == loginToken.userEmail
-              )
-            );
-          }
+          const received = resp.newMessages.filter(
+            (nw) => nw.source.email != loginToken.userEmail
+          );
+          setMessages(received);
+          setSendEmoji("");
+          setEmojiError("");
         }
-      });
+        if (resp.newReplies == null) {
+          setReplies([]);
+          setSents([]);
+        } else {
+          setSents(
+            resp.newReplies.filter(
+              (nr) => nr.from.email == loginToken.userEmail
+            )
+          );
+          setReplies(
+            resp.newReplies.filter(
+              (nr) => nr.message.source.email == loginToken.userEmail
+            )
+          );
+        }
+      }
     };
-    useEffect(() => {
-      getMessages();
-    }, []);
+    useEffect(getMessages, []);
     const replyMessage = async (message, reply) => {
       const resp = await Queries.ackMsg(message.uuid, reply, loginToken);
-      // TODO check if resp is an error
+      if (resp instanceof Queries.Error) alert(resp.msg);
     };
     const [index, setIndex] = React.useState(0);
     useEffect(() => {
-      if (index < 0) {
-        setIndex(0);
-      }
+      if (index < 0) setIndex(0);
     }, [index]);
     return (
       <View style={styles.container}>
@@ -700,7 +708,6 @@ const MainApp = () => {
     );
   };
   const ViewGroup = ({ viewingGroup }) => {
-    // console.log("viewing",viewingGroup)
     return (
       <View style={styles.container}>
         <Text>{viewingGroup.name}</Text>
@@ -872,14 +879,13 @@ const DraftMsg = (props) => {
   useEffect(() => {
     const fetchMessage = async () => {
       const resp = await Queries.recommendations();
-      // console.log(resp.recommendations);
+      if (resp instanceof Queries.Error) return alert(resp.msg);
       setRecommendations(resp.recommendations || []);
     };
     fetchMessage();
   }, []);
 
   const sendEmoji = async () => {
-    // console.log("emojis",emojis)
     if (emojiLen(emojis) != 3)
       return setEmojiError("You need to send exactly three emojis");
     const resp = await Queries.sendMsg(loginToken, emojis, messaging.uuid, loc);
@@ -896,7 +902,6 @@ const DraftMsg = (props) => {
     const newText = emoji.substring(emojis.length);
     if (emojiLen(emojis) >= 3) setEmojiError("You can only add three emojis");
     else if (!emojiRegex.test(newText)) {
-      // console.log(newText)
       setEmojiError("You can only send emojis");
     } else {
       setEmoji(emoji);
@@ -908,7 +913,6 @@ const DraftMsg = (props) => {
     if (emojis.length > 0) setEmoji(emojis.substring(0, emojis.length - 2));
     else if (emojis.length <= 6) setEmojiError("");
   };
-  // console.log(emojis)
   return (
     <View style={styles.container}>
       <Text>Sending message to {messaging.name}</Text>
@@ -937,7 +941,6 @@ const DraftMsg = (props) => {
             return;
           }
           const l = await getLoc();
-          console.log(l);
           if (!l || l.length == 0) return alert("Could not get location!");
           const locString = l[0].street
             ? `${l[0].name}, ${l[0].street}`
