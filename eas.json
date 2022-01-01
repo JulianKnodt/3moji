@@ -1,20 +1,19 @@
 {
-    "cli": {
-      "version": ">= 0.34.0"
-    },
-    "submit": {
-      "production": {
-        "ios": {
-          "appleId": "julianknodt@gmail.com",
-          "ascAppId": "1596502966",
-          "appleTeamId": "U9Q5P26YG7",
-          "sku": "EX1637346917853",
-          "appName":"moji3",
-          "ascApiKeyPath":"/Users/yingxi/Downloads/AuthKey_Z3F6JH2436.p8",
-          "ascApiKeyIssuerId":"8287ef52-413f-49d4-a7c4-21745c962cbf",
-          "ascApiKeyId":"Z3F6JH2436"
-        }
+  "cli": {
+    "version": ">= 0.34.0"
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "julianknodt@gmail.com",
+        "ascAppId": "1596502966",
+        "appleTeamId": "U9Q5P26YG7",
+        "sku": "EX1637346917853",
+        "appName": "moji3",
+        "ascApiKeyPath": "/Users/yingxi/Downloads/AuthKey_Z3F6JH2436.p8",
+        "ascApiKeyIssuerId": "8287ef52-413f-49d4-a7c4-21745c962cbf",
+        "ascApiKeyId": "Z3F6JH2436"
       }
     }
   }
-  
+}

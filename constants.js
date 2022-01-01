@@ -12,7 +12,6 @@ export const views = {
   CreateGroup: "CreateGroup",
 };
 
-
 export const HeaderText = {
   [views.Splash]: "",
   [views.SignUp]: "",
@@ -27,5 +26,3 @@ export const HeaderText = {
   [views.ViewGroup]: "👥",
   [views.CreateGroup]: "🆕",
 };
-
-

@@ -1,6 +1,5 @@
 // 私以外私じゃないの
-const https = require('https')
-
+const https = require("https");
 
 /*
 const options = {
