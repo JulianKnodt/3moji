@@ -401,8 +401,8 @@ const MainApp = () => {
           <Tab.Item title="👤" />
         </Tab>
         <TabView value={index} onChange={setIndex}>
-          <TabView.Item>
-            <View style={styles.mainContent}>
+        <TabView.Item styles={styles.mainContent}>
+            <View style={[styles.mainContent,{paddingLeft:350}]}>
               {joinedGroups.map((group) => (
                 <View
                   key={group.uuid}

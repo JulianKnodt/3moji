@@ -100,11 +100,11 @@ export const styles = StyleSheet.create({
     resizeMode: "stretch",
   },
   mainContent: {
-    // flex: 1,
+    flex: 1,
     width: 400,
-    // height: "100%"
-    // alignItems: 'center',
-    // justifyContent: 'space-between',
+    height: "100%",
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   hiddenInput: {
     height: 0,
