@@ -606,7 +606,7 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 			fmt.Fprintf(w, "Error parsing request: %v", err)
 			return
 		}
-		var recs map[EmojiContent]struct{}
+		recs := make(map[EmojiContent]struct{})
 		switch int(math.Round(req.LocalTime)) % 24 {
 		case 6, 7, 8, 9:
 			recs = map[EmojiContent]struct{}{
