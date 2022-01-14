@@ -153,7 +153,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 			return
 		}
 		matchFn := req.Filter.MatchFunc()
-		cond = func(u *User) bool { return cond(u) && matchFn(u.Name) }
+		cond_w_match := func(u *User) bool { return cond(u) && matchFn(u.Name) }
 
 		if req.Kind == OnlyFriends {
 			for uuid := range s.Friends[user.Uuid] {
@@ -184,7 +184,7 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 				if person.Uuid == user.Uuid {
 					continue
 				}
-				if !cond(&person) {
+				if !cond_w_match(&person) {
 					continue
 				}
 				resp.People = append(resp.People, person)
@@ -551,8 +551,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			return
 		}
 		matchFn := req.Filter.MatchFunc()
-		matchFn = func(string) bool { return true }
-		cond = func(ctx context.Context, g Group) (bool, error) {
+		cond_w_match := func(ctx context.Context, g Group) (bool, error) {
 			if !matchFn(g.Name) {
 				return false, nil
 			}
@@ -569,7 +568,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		// Probably need to fix later when actually using a database.
 		ctx := context.Background()
 		for _, group := range groups {
-			matches, err := cond(ctx, group)
+			matches, err := cond_w_match(ctx, group)
 			if !matches || err != nil {
 				continue
 			}
