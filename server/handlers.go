@@ -136,8 +136,6 @@ func (s *Server) ListPeopleHandler() http.HandlerFunc {
 		}
 		amt := req.Amount
 		var resp ListPeopleResponse
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		var cond func(*User) bool
 		switch req.Kind {
 		case All:
@@ -248,8 +246,6 @@ func (s *Server) AckMsgHandler() http.HandlerFunc {
 			return
 		}
 
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		// Do not delete the original message here since other users may need to see it, but now a
 		// specific user should not be able to see it anymore.
 		delete(s.UserToMessages[user.Uuid], req.MsgID)
@@ -359,8 +355,7 @@ func (s *Server) GroupHandler() http.HandlerFunc {
 			fmt.Fprint(w, "User does not exist")
 			return
 		}
-		s.mu.Lock()
-		defer s.mu.Unlock()
+
 		switch req.Kind {
 		case JoinGroup:
 			group, err := s.GetGroup(context.Background(), req.GroupUuid)
@@ -532,8 +527,6 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 		}
 		amt := req.Amount
 		var resp ListGroupResponse
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		var cond func(context.Context, Group) (bool, error)
 		switch req.Kind {
 		case AllGroups:
@@ -558,6 +551,7 @@ func (s *Server) ListGroupHandler() http.HandlerFunc {
 			return
 		}
 		matchFn := req.Filter.MatchFunc()
+		matchFn = func(string) bool { return true }
 		cond = func(ctx context.Context, g Group) (bool, error) {
 			if !matchFn(g.Name) {
 				return false, nil
@@ -652,6 +646,9 @@ func (s *Server) RecommendationHandler() http.HandlerFunc {
 				"🌌🚶🌃": struct{}{},
 			}
 		}
+		if recs == nil {
+			recs = make(map[EmojiContent]struct{})
+		}
 		for _, v := range s.FindNearRecommendations(10, req.LocalTime) {
 			recs[v] = struct{}{}
 		}
@@ -697,9 +694,6 @@ func (s *Server) FriendHandler() http.HandlerFunc {
 			fmt.Fprint(w, "User does not exist")
 			return
 		}
-
-		s.mu.Lock()
-		defer s.mu.Unlock()
 
 		switch fp.Action {
 		case Rmfriend:
@@ -755,8 +749,6 @@ func (s *Server) SendMsgHandler() http.HandlerFunc {
 			return
 		}
 
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		var uuids []Uuid
 		switch req.RecipientKind {
 		case MsgGroup:
@@ -966,8 +958,6 @@ func (s *Server) RecvMsgHandler() http.HandlerFunc {
 		var out RecvMsgResponse
 		now := time.Now()
 
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		for uuid := range s.UserToMessages[user.Uuid] {
 			msg, err := s.GetMessage(context.Background(), uuid)
 			if err != nil {
